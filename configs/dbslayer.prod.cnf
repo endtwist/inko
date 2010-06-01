@@ -1,0 +1,5 @@
+[kitsune]
+database=kitsune
+host=localhost
+user=root
+pass=
