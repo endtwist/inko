@@ -19,7 +19,7 @@ function run() {
     });
 }
 
-fs.watchFile(args[0], function(curr, prev) {
+fs.watchFile(__dirname, function(curr, prev) {
     if(curr.mtime > prev.mtime)
         run();
 });
