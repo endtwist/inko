@@ -1,0 +1,14 @@
+while getopts trdx opt
+do
+    case "$opt" in
+      t)  expresso test/tests/*;;
+      r)  ENVIRONMENT="production" && node app.js;;
+      d)  node reloader.js app.js;;
+      x)  dbslayer -s kitsune -c `pwd`/configs/dbslayer.local.cnf;;
+      \?) # unknown flag
+          echo >&2 \
+	  "usage: $0 [-trdx]"
+	  exit 1;;
+    esac
+done
+shift `expr $OPTIND - 1`

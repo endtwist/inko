@@ -1,7 +1,6 @@
 var dbslayer = require('dbslayer'),
     db = new dbslayer.Server(DBSLAYER_HOST, DBSLAYER_PORT),
     PickleHack = require('./util').DjangoPickleReader;
-var sys = require('sys');
                 
 exports.DjangoSession = new Class({
     constructor: function(sid, callback) {
@@ -53,24 +52,24 @@ exports.DjangoSession = new Class({
                                       AGENT_PERM));
                     db.addListener('result', function(result) {
                         db.removeListener('result', arguments.callee);
-                        self.permissions = [];
+                        self.perms = [];
                         if(result.ROWS.length) {
                             var perms = result.ROWS;
                             for(var i = 0, rl = perms.length; i < rl; i++) {
-                                self.permissions.push(perms[i][0]);
+                                self.perms.push(perms[i][0]);
                             }
                         }
-                        callback(self.user_id);
+                        callback.call(self, self.user_id);
                     });
                 } else {
                     self.user_id = false;
-                    callback(self.user_id);
+                    callback.call(self, self.user_id);
                 }
             });
         });
         db.addListener('error', function(error, errno) {
             self.user_id = false;
-            callback(self.user_id);
+            callback.call(self, self.user_id);
         });
     }
 });

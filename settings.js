@@ -12,3 +12,8 @@ LOGIN_URL = 'https://support.mozilla.com/login'
 // Permissions
 MONITOR_PERM = 'monitor_live_chat'
 AGENT_PERM = 'agent_live_chat'
+
+// Agent Defaults
+AGENT_MAX_GUESTS = 1
+
+// Guest Defaults

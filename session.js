@@ -1,30 +1,40 @@
-var sys = require('sys'),
-    utils = require('express/utils'),
-    models = require('./models');
+var utils = require('express/utils'),
+    models = require('./models'),
+    chat = require('./chat');
+var sys = require('sys');
 
 var SessionBase = Base.extend({
-    type: 'unset',
-    
-    become: function(type, options) {
-        return false;
-    }
-});
+    constructor: function(id) {
+        this.id = id;
+        this.connections = [];
+    },
 
-var User = SessionBase.extend({
-    constructor: function(sid, store) {
-        Base.call(this, sid);
-        this.store = store;
-        this.type = 'unset';
+    connection: function(conn) {
+        this.connections.push(conn);
+    },
+
+    respond: function(code, message) {
+        if(message == null) {
+            message = code;
+            code = 200;
+        }
+
+        if(typeof message == 'object' ||
+           typeof message == 'array')
+            message = JSON.encode(message);
+
+        while(conn = this.connections.shift())
+            conn.respond(200, message);
     },
     
-    become: function(type, options, callback) {
-        var session = (type == 'agent' ?
-                       new Agent(this.id, options, callback) :
-                       new Guest(this.id, options, callback));
-        this.store[type + 's'].push(session);
-        
-        this.store.store[this.id] = session;
-        return session;
+    get: function(data) {
+        if(data in this.data)
+            return this.data[data];
+        else if(typeof this[data] !== 'undefined' &&
+                typeof this[data] !== 'function')
+            return this[data];
+        else
+            return false;
     }
 });
 
@@ -37,25 +47,32 @@ var Agent = SessionBase.extend({
     *  - maxGuests: number of people this agent can help simultaneously
     *
     */
-    constructor: function(id, options, callback) {
+    constructor: function(id, options) {
+        SessionBase.call(this, id);
+        this.maxGuests = 1;
         Object.merge(this, options);
-        this.id = id;
-        this.data = new models.DjangoSession(
-                            this.id,
-                            function(user_id) {
-                                this.authenticated = !!user_id;
-                                if(callback)
-                                    callback(this.authenticated);
-                            });
         this.type = 'agent';
+        this.guests = [];
+        
+        chat.manager.agentAvailable(this);
     },
 
     assignGuest: function(guest) {
         // Assign a 'Guest' to this 'Agent'
+        this.guests.push(guest);
+        guest.agent = this;
+        
+        if(!this.available)
+            chat.mananger.agentUnavailable(this);
     },
 
-    available: function() {
+    get available() {
         // Determine if the 'Agent' can accept a new 'Guest'
+        return (this.guests < this.maxGuests);
+    },
+    
+    toString: function() {
+        return this.get('username');
     }
 });
 
@@ -72,11 +89,16 @@ var Guest = SessionBase.extend({
     *
     */
     constructor: function(id, options) {
+        SessionBase.call(this, id);
         Object.merge(this, options);
-        this.id = id;
-        this.username = username;
         this.agent = null;
         this.type = 'guest';
+
+        chat.manager.queueGuest(this);
+    },
+    
+    toString: function() {
+        return this.get('username');
     }
 });
 
@@ -85,36 +107,35 @@ Store.MemoryExtended = Store.Memory.extend({
 
     constructor: function() {
         Store.Memory.call(this);
-        this.agents = [];
-        this.guests = [];
     },
-    
-    fetchAvailableAgent: function(callback) {
-        for(agent in this.agents) {
-            if(agent.available()) {
-                callback(agent);
-                break;
-            }
-        }
-    },
-    
-    queueGuest: function(guest) {
-        this.guests.push(guest);
-    },
-    
-    dequeueGuest: function(guest, callback) {
-        callback(this.guests.shift());
-    },
-    
+
     fetch: function(sid, callback) {
         if(sid && this.store[sid])
             callback(null, this.store[sid]);
         else
             this.generate(sid, callback);
     },
-    
+
     generate: function(sid, callback) {
-        callback(null, new User(sid, this));
+        new models.DjangoSession(
+            sid,
+            function(user_id) {
+                if(!user_id) {
+                    callback(null, new Guest(sid, this));
+                } else if(this.perms.indexOf(AGENT_PERM) != -1 ||
+                          this.perms.indexOf(MONITOR_PERM) != -1) {
+                    callback(null,
+                             new Agent(sid, {
+                                maxGuests: AGENT_MAX_GUESTS,
+                                data: this
+                             }));
+                } else {
+                    callback(null,
+                             new Guest(sid, {
+                                data: this
+                             }));
+                }
+            });
     }
 });
 
@@ -127,14 +148,14 @@ Session.Djangofied = Plugin.extend({
             this.store = new (this.dataStore || exports.Store.Memory)(options)
             this.startReaper()
         },
-        
+
         startReaper: function() {
             setInterval(function(self) {
                 self.store.reap(self.lifetime || (1).day)
             }, this.reapInterval || this.reapEvery || (1).hour, this)
         }
     },
-    
+
     on: {
         request: function(event, callback) {
             var sid = event.request.cookie('sessionid');
@@ -144,6 +165,7 @@ Session.Djangofied = Plugin.extend({
                 Session.Djangofied.store.fetch(sid, function(err, session) {
                     if(err) return callback(err);
                     event.request.session = session;
+                    event.request.session.connection(event.request);
                     event.request.session.touch();
                     callback();
                 });
@@ -152,7 +174,7 @@ Session.Djangofied = Plugin.extend({
             }
             return true;
         },
-        
+
         response: function(event, callback) {
             if(event.request.session)
                 return Session.Djangofied.store.commit(

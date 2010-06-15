@@ -9,7 +9,6 @@ A live chat support system for support.mozilla.com.
 * [kiwi](http://github.com/visionmedia/kiwi) (node.js package manager) >= 0.3.1
 * [express](http://github.com/visionmedia/express) (framework) == 0.13.0
 
-
 ## Installation
 
 Download node.js, compile from source:
@@ -25,7 +24,7 @@ Install the kiwi package manager for node.js (on OS X, its easiest to do using [
 
 Install express, a node.js web framework:
     kiwi -v install express 0.13.0
-    
+
 Install dbslayer:
     wget http://code.nytimes.com/downloads/dbslayer-beta-12.tgz
     tar xzf dbslayer-beta-12.tgz
@@ -33,3 +32,15 @@ Install dbslayer:
     ./configure
     make
     make install
+
+Create a local settings file by copying settings.js to settings.local.js
+    cp settings.js settings.local.js
+
+Create a local dbslayer config file by copying configs/dbslayer.prod.cnf to configs/dbslayer.local.cnf
+    cp configs/dbslayer.prod.cnf configs/dbslayer.local.cnf
+
+## Signing in
+
+1. Sign into TikiWiki.
+2. Visit the Django kitsune site (creates the `sessionid` cookie).
+3. Return to the Node.js server.

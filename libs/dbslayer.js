@@ -24,7 +24,6 @@ Server.prototype.fetch = function(object, key) {
   var connection = http.createClient(this.port, this.host);
   var request = connection.request('GET', '/db?' + escape(JSON.stringify(object)), {'host': this.host});
   var server = this;
-
   request.addListener('response', function(response) {
     var allData = "";
     response.setEncoding('utf8');
@@ -37,6 +36,7 @@ Server.prototype.fetch = function(object, key) {
         var object = JSON.parse(allData);
       } catch(e) {
         server.emit('error', e);
+        return;
       }
 
       if (object !== undefined) {
