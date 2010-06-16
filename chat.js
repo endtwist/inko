@@ -21,8 +21,7 @@ exports.manager = new (new Class({
             var guest = this.guests.shift();
             agent.assignGuest(guest);
 
-            // assign guest metadata to private rooms!
-            var room = new exports.Room([agent, guest], true);
+            var room = new exports.Room(agent, guest);
             this.rooms[room.toString()] = room;
         } else {
             (requested_by || agent).respond({
@@ -164,11 +163,18 @@ exports.Status = Package.extend({
 });
 
 exports.Room = new Class({
-    constructor: function(users, prv) {
+    constructor: function(users, guest) {
         this.users = [];
-        this.prv = !!prv;
         this.id = utils.uid();
         this.topic = '';
+
+        if(users.constructor.toString().indexOf('Array') == -1)
+            users = [users];
+        
+        if(guest) {
+            users.push(guest);
+            this.guest = guest;
+        }
 
         var self = this;
         users.each(function(user) {
@@ -179,7 +185,7 @@ exports.Room = new Class({
 
     join: function(user, primary_users) {
         if(!primary_users &&
-           this.prv &&
+           this._private &&
            user.get('perms').indexOf(MONITOR_PERM) == -1) {
             user.respond(403, {type: 'error', error: 'no permissions'});
             return;
@@ -191,10 +197,14 @@ exports.Room = new Class({
         }
 
         this.users.push(user);
-        user.respond({type: 'joined',
-                      room: this.toString(),
-                      topic: this.topic});
-                      // list other users
+        var join_msg = {type: 'joined',
+                        room: this.toString(),
+                        topic: this.topic};
+        if(this._private && user.type == 'agent') {
+            join_msg.guest = this.guest.data;
+        }
+        user.respond(join_msg);
+        // list other users
     },
 
     leave: function(user) {
@@ -228,10 +238,14 @@ exports.Room = new Class({
         message.room = this.id;
         var recips = this.users.slice();
         while(to = recips.shift())
-            /*if(to != message.from)*/ to.respond(message.toString());
+            to.respond(message.toString());
     },
 
     toString: function() {
         return this.id;
+    },
+    
+    get _private() {
+        return !!this.guest;
     }
 });
