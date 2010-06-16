@@ -73,6 +73,11 @@ get('/leave/:id', function(id) {
     chat.manager.with_(this.session, id)('leave');
 });
 
+get('/end/:id', function(id) {
+    // Destroy room :id
+    chat.manager.destroyRoom(this.session, id);
+});
+
 get('/create/:name', function(name) {
     // Create room :name
     chat.manager.initRoom(this.session, name);

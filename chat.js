@@ -93,6 +93,19 @@ exports.manager = new (new Class({
         var room = new exports.Room([user], false);
         this.rooms[room.toString()] = room;
     },
+    
+    destroyRoom: function(user, room) {
+        if(room in this.rooms) {
+            if(this.rooms[room].users.indexOf(user) > -1) {
+                this.rooms[room].close();
+                delete this.rooms[room];
+             } else {
+                user.respond({type: 'error', error: 'no permissions'});
+             }
+        } else {
+            user.respond({type: 'error', error: 'no such room'});
+        }
+    },
 
     // lcm.with_('user', 'room or id')('action', 'arg', 'arg')
     with_: function(user, name) {
@@ -216,6 +229,13 @@ exports.Room = new Class({
             user.respond({type: 'error', error: 'not in room'});
             return false;
         }
+    },
+    
+    end: function() {
+        var self = this;
+        this.users.each(function(user) {
+            user.respond({type: 'end', room: self.toString()});
+        });
     },
 
     send: function(message) {
