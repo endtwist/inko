@@ -42,6 +42,7 @@ get('/guests', function() {
 
 get('/assist', function() {
     // Dequeue guest, create new room for users.
+    chat.manager.assignNextGuestToThisAgent(this.session);
 })
 
 post('/message/:room', function(id) {

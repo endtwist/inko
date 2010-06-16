@@ -63,7 +63,7 @@ var Agent = SessionBase.extend({
         guest.agent = this;
         
         if(!this.available)
-            chat.mananger.agentUnavailable(this);
+            chat.manager.agentUnavailable(this);
     },
 
     get available() {

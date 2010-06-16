@@ -8,41 +8,59 @@ exports.manager = new (new Class({
         this.guests = [];
     },
 
-    assignNextGuestToThisAgent: function(agent) {
+    assignNextGuestToThisAgent: function(agent, requested_by) {
+        if(agent.type != 'agent') {
+            (requested_by || agent).respond({
+                type: 'error',
+                error: 'not an agent'
+            });
+            return false;
+        }
+
         if(agent.available && this.guests.length) {
             var guest = this.guests.shift();
             agent.assignGuest(guest);
-            
+
             // assign guest metadata to private rooms!
             var room = new exports.Room([agent, guest], true);
             this.rooms[room.toString()] = room;
         } else {
+            (requested_by || agent).respond({
+                type: 'error',
+                error: (!agent.available ?
+                            'agent unavailable' :
+                            'no queued guests')
+            });
             return false;
         }
     },
-    
-    assignNextGuestToNextAgent: function() {
+
+    assignNextGuestToNextAgent: function(requested_by) {
         if(this.available_agents.length) {
-            this.assignNextGuestToThisAgent(available_agents.first);
+            this.assignNextGuestToThisAgent(available_agents.first,
+                                            requested_by);
         } else {
-            return false;
+            requested_by.respond({
+                type: 'error',
+                error: 'no agents available'
+            });
         }
     },
-    
+
     agentAvailable: function(agent) {
         this.available_agents.push(agent);
         if((pos = this.unavailable_agents.indexOf(agent)) > -1)
             this.unavailable_agents.splice(pos, 1);
         this._sortAgents();
     },
-    
+
     agentUnavailable: function(agent) {
         this.unavailable_agents.push(agent);
         if((pos = this.available_agents.indexOf(agent)) > -1)
             this.available_agents.splice(pos, 1);
-        this._sortAgents();            
+        this._sortAgents();
     },
-    
+
     _sortAgents: function() {
         this.available_agents.sort(function(a, b) {
             if(a.guests.length > b.guests.length)
@@ -59,7 +77,7 @@ exports.manager = new (new Class({
     dequeueGuest: function(guest, callback) {
         callback(this.guests.shift());
     },
-    
+
     get queue() {
         var guests = [];
         for(var i = 0, g = this.guests.length; i < g; i++)
@@ -69,7 +87,7 @@ exports.manager = new (new Class({
 
     initRoom: function(user, room) {
         if(user.get('perms').indexOf(MONITOR_PERM) == -1) {
-            //user.respond(403, {status: 'error', error: 'no permissions'});
+            //user.respond(403, {type: 'error', error: 'no permissions'});
             //return;
         }
 
@@ -80,10 +98,10 @@ exports.manager = new (new Class({
     // lcm.with_('user', 'room or id')('action', 'arg', 'arg')
     with_: function(user, name) {
         var room_obj = function() {
-            user.respond({status: 'error', error: 'no such room'});
+            user.respond({type: 'error', error: 'no such room'});
             return false;
         };
-        
+
         if(name in this.rooms) {
             var self = this;
             room_obj = function() {
@@ -95,7 +113,7 @@ exports.manager = new (new Class({
                 room[action].apply(room, args);
             };
         }
-        
+
         return room_obj;
     }
 }));
@@ -133,7 +151,7 @@ exports.Status = Package.extend({
         this.type = type;
         this.status = status;
     },
-    
+
     toString: function() {
         return JSON.encode(
             {type: 'status',
@@ -154,24 +172,26 @@ exports.Room = new Class({
 
         var self = this;
         users.each(function(user) {
-            self.join(user);
+            self.join(user, true);
             self.users.push(user);
         })
     },
 
-    join: function(user) {
-        if(this.prv && user.perms.indexOf(MONITOR_PERM) == -1) {
-            user.respond(403, {status: 'error', error: 'no permissions'});
+    join: function(user, primary_users) {
+        if(!primary_users &&
+           this.prv &&
+           user.get('perms').indexOf(MONITOR_PERM) == -1) {
+            user.respond(403, {type: 'error', error: 'no permissions'});
             return;
         }
-        
+
         if(this.users.indexOf(user) != -1) {
-            user.respond({status: 'error', error: 'already in room'});
+            user.respond({type: 'error', error: 'already in room'});
             return;
         }
 
         this.users.push(user);
-        user.respond({status: 'joined',
+        user.respond({type: 'joined',
                       room: this.toString(),
                       topic: this.topic});
                       // list other users
@@ -181,9 +201,9 @@ exports.Room = new Class({
         // Add room: key to errors
         user = this.users.splice(this.users.indexOf(user), 1);
         if(user)
-            user.respond({status: 'left', room: this.toString()});
+            user.respond({type: 'left', room: this.toString()});
         else {
-            user.respond({status: 'error', error: 'not in room'});
+            user.respond({type: 'error', error: 'not in room'});
             return false;
         }
     },
@@ -191,20 +211,20 @@ exports.Room = new Class({
     send: function(message) {
         if(this.users.indexOf(message.from) == -1) {
             message.from.respond(403, {
-                status: 'error',
+                type: 'error',
                 error: 'no permissions'
             });
             return;
         }
-        
+
         if(!message.body.length) {
             message.from.respond({
-                status: 'error',
+                type: 'error',
                 error: 'no message body'
             });
             return;
         }
-        
+
         message.room = this.id;
         var recips = this.users.slice();
         while(to = recips.shift())
