@@ -23,8 +23,15 @@ var SessionBase = Base.extend({
            typeof message == 'array')
             message = JSON.encode(message);
 
-        while(conn = this.connections.shift())
-            conn.respond(200, message);
+        while(conn = this.connections.shift()) {
+            var callback = (conn.param('callback') || '')
+                            .replace(/[^A-Za-z0-9_]/, '');
+            conn.respond(200,
+                        callback ?
+                        sprintf('%s(%s)', callback, message) :
+                        message
+            );
+        }
     },
     
     get: function(data) {
