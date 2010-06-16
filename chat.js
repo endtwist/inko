@@ -120,9 +120,9 @@ exports.manager = new (new Class({
             var self = this;
             room_obj = function() {
                 var action = arguments[0];
-                if(['join', 'leave'].indexOf(action) > -1)
-                    arguments[1] = user;
                 var args = Array.prototype.slice.call(arguments, 1);
+                if(-~['join', 'leave'].indexOf(action))
+                    args[0] = user;
                 var room = self.rooms[name];
                 room[action].apply(room, args);
             };
@@ -162,7 +162,7 @@ exports.Message = Package.extend({
         return JSON.encode(
             {type: 'message',
              room: this.room,
-             from: this.from.get('username'),
+             user: this.from.get('username'),
              body: this._sanitize(this.body),
              sent: this.sent}
         );
@@ -184,6 +184,23 @@ exports.Status = Package.extend({
              user: this.user.get('username'),
              of: this.type,
              is: this.status}
+        );
+    }
+});
+
+exports.Notification = Package.extend({
+    constructor: function(user, details) {
+        this.room = '';
+        this.user = user;
+        this.details = details;
+    },
+    
+    toString: function() {
+        return JSON.encode(
+            {type: 'notification',
+             room: this.room,
+             user: this.user.get('username'),
+             details: this.details}
         );
     }
 });
@@ -233,20 +250,21 @@ exports.Room = new Class({
         user.respond(join_msg);
         // list other users
         
-        this.touch();
+        this.send(new exports.Notification(user, 'joined'));
     },
 
     leave: function(user) {
         // Add room: key to errors
-        user = this.users.splice(this.users.indexOf(user), 1);
-        if(user)
+        var sys = require('sys');
+        sys.puts(sys.inspect(arguments));
+        if(this.users.splice(this.users.indexOf(user), 1))
             user.respond({type: 'left', room: this.toString()});
         else {
             user.respond({type: 'error', error: 'not in room'});
             return false;
         }
         
-        this.touch();
+        this.send(new exports.Notification(user, 'left'));
     },
     
     end: function() {
@@ -257,16 +275,16 @@ exports.Room = new Class({
     },
 
     send: function(message) {
-        if(this.users.indexOf(message.from) == -1) {
-            message.from.respond(403, {
+        if(this.users.indexOf(message.user) == -1) {
+            message.user.respond(403, {
                 type: 'error',
                 error: 'no permissions'
             });
             return;
         }
 
-        if(!message.body.length) {
-            message.from.respond({
+        if('body' in message && !message.body.length) {
+            message.user.respond({
                 type: 'error',
                 error: 'no message body'
             });

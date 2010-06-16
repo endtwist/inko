@@ -61,7 +61,7 @@ post('/message/:id', function(id) {
     ));
 });
 
-get('/message/:id/typing', function(id) {
+post('/message/:id/typing', function(id) {
     var states = ['off', 'on', 'wait'];
     chat.manager.with_(this.session, id)('send', new chat.Status(
         this.session,
