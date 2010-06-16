@@ -16,4 +16,5 @@ AGENT_PERM = 'agent_live_chat'
 // Agent Defaults
 AGENT_MAX_GUESTS = 1
 
-// Guest Defaults
+// Chat Defaults
+MAX_CHAT_INACTIVITY = (5).minutes

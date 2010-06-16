@@ -6,6 +6,8 @@ exports.manager = new (new Class({
         this.available_agents = [];
         this.unavailable_agents = [];
         this.guests = [];
+        
+        this.grim_reaper = setInterval(this.reaper, (5).seconds, this);
     },
 
     assignNextGuestToThisAgent: function(agent, requested_by) {
@@ -127,6 +129,17 @@ exports.manager = new (new Class({
         }
 
         return room_obj;
+    },
+    
+    reaper: function(self) {
+        for(room in self.rooms) {
+            var $room = self.rooms[room];
+            if($room._private &&
+               $room.last_activity < (Date.now() - MAX_CHAT_INACTIVITY)) {
+               $room.end();
+               delete self.rooms[room];
+            }
+        }
     }
 }));
 
@@ -180,6 +193,7 @@ exports.Room = new Class({
         this.users = [];
         this.id = utils.uid();
         this.topic = '';
+        this.last_activity = Date.now();
 
         if(users.constructor.toString().indexOf('Array') == -1)
             users = [users];
@@ -218,6 +232,8 @@ exports.Room = new Class({
         }
         user.respond(join_msg);
         // list other users
+        
+        this.touch();
     },
 
     leave: function(user) {
@@ -229,6 +245,8 @@ exports.Room = new Class({
             user.respond({type: 'error', error: 'not in room'});
             return false;
         }
+        
+        this.touch();
     },
     
     end: function() {
@@ -259,10 +277,16 @@ exports.Room = new Class({
         var recips = this.users.slice();
         while(to = recips.shift())
             to.respond(message.toString());
+        
+        this.touch();
     },
 
     toString: function() {
         return this.id;
+    },
+    
+    touch: function() {
+        this.last_activity = Date.now();
     },
     
     get _private() {
