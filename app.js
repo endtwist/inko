@@ -45,7 +45,15 @@ get('/assist', function() {
     chat.manager.assignNextGuestToThisAgent(this.session);
 })
 
-post('/message/:room', function(id) {
+post('/message', function() {
+    chat.manager.with_(this.session, this.param('id'))('send',
+        new chat.Message(
+            this.session,
+            this.params.post.body || ''
+        ));
+});
+
+post('/message/:id', function(id) {
     // Send message to room :id
     chat.manager.with_(this.session, id)('send', new chat.Message(
         this.session,
@@ -53,7 +61,7 @@ post('/message/:room', function(id) {
     ));
 });
 
-get('/message/:room/typing', function(id) {
+get('/message/:id/typing', function(id) {
     var states = ['off', 'on', 'wait'];
     chat.manager.with_(this.session, id)('send', new chat.Status(
         this.session,
