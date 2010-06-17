@@ -28,7 +28,7 @@ configure(function() {
 });
 
 get('/', function() {
-    this.session.respond(200, sys.inspect(this.session));
+    this.session.respond(200, sys.inspect(this.session), true);
 });
 
 get('/listen', function() {
@@ -37,7 +37,7 @@ get('/listen', function() {
 
 get('/guests', function() {
     // Return list of queued / not queued guests
-    this.respond(200, chat.manager.queue);
+    this.session.respond(200, chat.manager.queue, true);
 });
 
 get('/assist', function() {

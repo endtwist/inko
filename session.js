@@ -13,8 +13,12 @@ var SessionBase = Base.extend({
         this.connections.push(conn);
     },
 
-    respond: function(code, message) {
+    respond: function(code, message, last_only) {
         if(message == null) {
+            message = code;
+            code = 200;
+        } else if(typeof message == 'boolean' && !last_only) {
+            last_only = message;
             message = code;
             code = 200;
         }
@@ -22,16 +26,21 @@ var SessionBase = Base.extend({
         if(typeof message == 'object' ||
            typeof message == 'array')
             message = JSON.encode(message);
-
-        while(conn = this.connections.shift()) {
-            var callback = (conn.param('callback') || '')
-                            .replace(/[^A-Za-z0-9_]/, '');
-            conn.respond(200,
-                        callback ?
-                        sprintf('%s(%s)', callback, message) :
-                        message
-            );
-        }
+        
+        var $conn = this.connections,
+            next_conn = function() {
+                if(conn = $conn.pop()) {
+                    var callback = (conn.param('callback') || '')
+                                    .replace(/[^A-Za-z0-9_]/, '');
+                    conn.respond(code,
+                                callback ?
+                                sprintf('%s(%s)', callback, message) :
+                                message,
+                                last_only ? false : next_conn
+                    );
+                }
+            };
+        next_conn();
     },
 
     get: function(data) {
@@ -129,10 +138,11 @@ Store.MemoryExtended = Store.Memory.extend({
     },
 
     fetch: function(sid, callback) {
-        if(sid && this.store[sid])
+        if(sid && this.store[sid]) {
             callback(null, this.store[sid]);
-        else
+        } else {
             this.generate(sid, callback);
+        }
     },
 
     generate: function(sid, callback) {
@@ -178,7 +188,7 @@ Session.Djangofied = Plugin.extend({
     on: {
         request: function(event, callback, fresh) {
             var sid = event.request.cookie('sessionid');
-            if(!sid && event.request.url.pathname === '/favicon.ico')
+            if(event.request.url.pathname === '/favicon.ico')
                 return;
             if(sid) {
                 Session.Djangofied.store.fetch(sid, function(err, session, fresh) {
@@ -205,6 +215,9 @@ Session.Djangofied = Plugin.extend({
                     event.request.session.connection(event.request);
                     event.request.session.touch();
                     callback();
+                    
+                    if(fresh && event.request.url.pathname === '/listen')
+                        session.respond({type: 'noop'});
                 });
             } else {
                 event.request.redirect(LOGIN_URL);

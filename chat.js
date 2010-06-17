@@ -58,14 +58,14 @@ exports.manager = new (new Class({
 
     agentAvailable: function(agent) {
         this.available_agents.push(agent);
-        if((pos = this.unavailable_agents.indexOf(agent)) > -1)
+        if(-~(pos = this.unavailable_agents.indexOf(agent)))
             this.unavailable_agents.splice(pos, 1);
         this._sortAgents();
     },
 
     agentUnavailable: function(agent) {
         this.unavailable_agents.push(agent);
-        if((pos = this.available_agents.indexOf(agent)) > -1)
+        if(-~(pos = this.available_agents.indexOf(agent)))
             this.available_agents.splice(pos, 1);
         this._sortAgents();
     },
@@ -95,7 +95,7 @@ exports.manager = new (new Class({
     },
 
     initRoom: function(user, room) {
-        if(user.get('perms').indexOf(MONITOR_PERM) == -1) {
+        if(!~user.get('perms').indexOf(MONITOR_PERM)) {
             //user.respond(403, {type: 'error', error: 'no permissions'});
             //return;
         }
@@ -106,7 +106,7 @@ exports.manager = new (new Class({
     
     destroyRoom: function(user, room) {
         if(room in this.rooms) {
-            if(this.rooms[room].users.indexOf(user) > -1) {
+            if(-~this.rooms[room].users.indexOf(user)) {
                 this.rooms[room].close();
                 delete this.rooms[room];
              } else {
@@ -220,7 +220,7 @@ exports.Room = new Class({
         this.topic = '';
         this.last_activity = Date.now();
 
-        if(users.constructor.toString().indexOf('Array') == -1)
+        if(!(users instanceof Array))
             users = [users];
         
         if(guest) {
@@ -232,18 +232,18 @@ exports.Room = new Class({
         users.each(function(user) {
             self.join(user, true);
             self.users.push(user);
-        })
+        });
     },
 
     join: function(user, primary_users) {
         if(!primary_users &&
            this._private &&
-           user.get('perms').indexOf(MONITOR_PERM) == -1) {
+           !~user.get('perms').indexOf(MONITOR_PERM)) {
             user.respond(403, {type: 'error', error: 'no permissions'});
             return;
         }
 
-        if(this.users.indexOf(user) != -1) {
+        if(-~this.users.indexOf(user)) {
             user.respond({type: 'error', error: 'already in room'});
             return;
         }
@@ -255,7 +255,7 @@ exports.Room = new Class({
         if(this._private && user.type == 'agent') {
             join_msg.guest = this.guest.data;
         }
-        user.respond(join_msg);
+        user.respond(join_msg, true);
         // list other users
         
         this.send(new exports.Notification(user, 'joined'));
@@ -286,7 +286,7 @@ exports.Room = new Class({
     },
 
     send: function(message) {
-        if(this.users.indexOf(message.user) == -1) {
+        if(!~this.users.indexOf(message.user)) {
             message.user.respond(403, {
                 type: 'error',
                 error: 'no permissions'
