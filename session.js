@@ -7,6 +7,7 @@ var SessionBase = Base.extend({
     constructor: function(id) {
         this.id = id;
         this.connections = [];
+        this.csrf_token = '';
     },
 
     connection: function(conn) {
@@ -33,7 +34,7 @@ var SessionBase = Base.extend({
             );
         }
     },
-    
+
     get: function(data) {
         if(data in this.data)
             return this.data[data];
@@ -60,7 +61,7 @@ var Agent = SessionBase.extend({
         Object.merge(this, options);
         this.type = 'agent';
         this.guests = [];
-        
+
         chat.manager.agentAvailable(this);
     },
 
@@ -68,7 +69,7 @@ var Agent = SessionBase.extend({
         // Assign a 'Guest' to this 'Agent'
         this.guests.push(guest);
         guest.agent = this;
-        
+
         if(!this.available)
             chat.manager.agentUnavailable(this);
     },
@@ -77,7 +78,7 @@ var Agent = SessionBase.extend({
         // Determine if the 'Agent' can accept a new 'Guest'
         return (this.guests < this.maxGuests);
     },
-    
+
     toString: function() {
         return this.get('username');
     }
@@ -103,7 +104,7 @@ var Guest = SessionBase.extend({
 
         chat.manager.queueGuest(this);
     },
-    
+
     toString: function() {
         return this.get('username');
     }
@@ -128,19 +129,19 @@ Store.MemoryExtended = Store.Memory.extend({
             sid,
             function(user_id) {
                 if(!user_id) {
-                    callback(null, new Guest(sid, this));
+                    callback(null, new Guest(sid, this), true);
                 } else if(this.perms.indexOf(AGENT_PERM) != -1 ||
                           this.perms.indexOf(MONITOR_PERM) != -1) {
                     callback(null,
                              new Agent(sid, {
                                 maxGuests: AGENT_MAX_GUESTS,
                                 data: this
-                             }));
+                             }), true);
                 } else {
                     callback(null,
                              new Guest(sid, {
                                 data: this
-                             }));
+                             }), true);
                 }
             });
     }
@@ -164,13 +165,31 @@ Session.Djangofied = Plugin.extend({
     },
 
     on: {
-        request: function(event, callback) {
+        request: function(event, callback, fresh) {
             var sid = event.request.cookie('sessionid');
             if(!sid && event.request.url.pathname === '/favicon.ico')
                 return;
             if(sid) {
-                Session.Djangofied.store.fetch(sid, function(err, session) {
-                    if(err) return callback(err);
+                Session.Djangofied.store.fetch(sid, function(err, session, fresh) {
+                    if(err) return callback(err);      
+                    
+                    var csrftok = event.request.cookie('_csrf') ||
+                                  event.request.param('_csrf');
+                                  
+                    if(!fresh && session.csrf_token != csrftok) {
+                        event.request.respond(400, JSON.encode({
+                                                        type: 'error',
+                                                        error: 'bad request'
+                                                    }));
+                        return;
+                    } else if(fresh) {
+                        var csrftok = utils.uid();
+                        event.request.cookie('_csrf', csrftok, {
+                            expires: Date.now() + (30).days
+                        });
+                        session.csrf_token = csrftok;
+                    }
+
                     event.request.session = session;
                     event.request.session.connection(event.request);
                     event.request.session.touch();

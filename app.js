@@ -28,7 +28,7 @@ configure(function() {
 });
 
 get('/', function() {
-    this.respond(200, sys.inspect(this.session));
+    this.session.respond(200, sys.inspect(this.session));
 });
 
 get('/listen', function() {
