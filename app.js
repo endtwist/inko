@@ -32,7 +32,7 @@ get('/', function() {
 });
 
 get('/listen', function() {
-    // Do absolutely nothing.
+    chat.manager.putGuestInQueue(this.session);
 });
 
 get('/guests', function() {

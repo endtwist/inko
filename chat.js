@@ -10,6 +10,14 @@ exports.manager = new (new Class({
         this.grim_reaper = setInterval(this.reaper, (5).seconds, this);
     },
 
+    putGuestInQueue: function(guest) {
+        if(guest.type != 'guest')
+            return false;
+        
+        if(!~this.guests.indexOf(guest) && !guest.agent)
+            this.queueGuest(guest);
+    },
+
     assignNextGuestToThisAgent: function(agent, requested_by) {
         if(agent.type != 'agent') {
             (requested_by || agent).respond({
@@ -255,8 +263,6 @@ exports.Room = new Class({
 
     leave: function(user) {
         // Add room: key to errors
-        var sys = require('sys');
-        sys.puts(sys.inspect(arguments));
         if(this.users.splice(this.users.indexOf(user), 1))
             user.respond({type: 'left', room: this.toString()});
         else {
@@ -269,7 +275,12 @@ exports.Room = new Class({
     
     end: function() {
         var self = this;
+        if(this.guest)
+            this.guest.unassignAgent();
+            
         this.users.each(function(user) {
+            if(user.type != 'guest')
+                user.unassignGuest(self.guest);
             user.respond({type: 'end', room: self.toString()});
         });
     },

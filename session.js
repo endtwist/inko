@@ -1,7 +1,6 @@
 var utils = require('express/utils'),
     models = require('./models'),
     chat = require('./chat');
-var sys = require('sys');
 
 var SessionBase = Base.extend({
     constructor: function(id) {
@@ -73,10 +72,16 @@ var Agent = SessionBase.extend({
         if(!this.available)
             chat.manager.agentUnavailable(this);
     },
+    
+    unassignGuest: function(guest) {
+        // Unassign a 'Guest' from this 'Agent'
+        var pos = this.guests.indexOf(guest);
+        this.guests.splice(pos, 1);
+    },
 
     get available() {
         // Determine if the 'Agent' can accept a new 'Guest'
-        return (this.guests < this.maxGuests);
+        return (this.guests.length < this.maxGuests);
     },
 
     toString: function() {
@@ -101,12 +106,18 @@ var Guest = SessionBase.extend({
         Object.merge(this, options);
         this.agent = null;
         this.type = 'guest';
-
-        chat.manager.queueGuest(this);
     },
 
     toString: function() {
         return this.get('username');
+    },
+    
+    assignAgent: function(agent) {
+        this.agent = agent;
+    },
+    
+    unassignAgent: function() {
+        this.agent = null;
     }
 });
 
@@ -130,8 +141,8 @@ Store.MemoryExtended = Store.Memory.extend({
             function(user_id) {
                 if(!user_id) {
                     callback(null, new Guest(sid, this), true);
-                } else if(this.perms.indexOf(AGENT_PERM) != -1 ||
-                          this.perms.indexOf(MONITOR_PERM) != -1) {
+                } else if(-~this.perms.indexOf(AGENT_PERM) ||
+                          -~this.perms.indexOf(MONITOR_PERM)) {
                     callback(null,
                              new Agent(sid, {
                                 maxGuests: AGENT_MAX_GUESTS,
