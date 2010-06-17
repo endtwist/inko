@@ -6,11 +6,15 @@ var SessionBase = Base.extend({
     constructor: function(id) {
         this.id = id;
         this.connections = [];
+        this.message_queue = [];
         this.csrf_token = '';
     },
 
     connection: function(conn) {
         this.connections.push(conn);
+        
+        if(this.message_queue.length)
+            this.respond.apply(this, this.message_queue.shift());
     },
 
     respond: function(code, message, last_only) {
@@ -27,20 +31,24 @@ var SessionBase = Base.extend({
            typeof message == 'array')
             message = JSON.encode(message);
         
-        var $conn = this.connections,
-            next_conn = function() {
-                if(conn = $conn.pop()) {
-                    var callback = (conn.param('callback') || '')
-                                    .replace(/[^A-Za-z0-9_]/, '');
-                    conn.respond(code,
-                                callback ?
-                                sprintf('%s(%s)', callback, message) :
-                                message,
-                                last_only ? false : next_conn
-                    );
-                }
-            };
-        next_conn();
+        if(this.connections.length) {
+            var $conn = this.connections,
+                next_conn = function() {
+                    if(conn = $conn.pop()) {
+                        var callback = (conn.param('callback') || '')
+                                        .replace(/[^A-Za-z0-9_]/, '');
+                        conn.respond(code,
+                                    callback ?
+                                    sprintf('%s(%s)', callback, message) :
+                                    message,
+                                    last_only ? false : next_conn
+                        );
+                    }
+                };
+            next_conn();
+        } else {
+            this.message_queue.push([code, message, last_only]);
+        }
     },
 
     get: function(data) {
