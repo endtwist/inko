@@ -6,23 +6,35 @@ var SessionBase = Base.extend({
     constructor: function(id) {
         this.id = id;
         this.connections = [];
+        this.listeners = [];
         this.message_queue = [];
         this.csrf_token = '';
     },
 
     connection: function(conn) {
         this.connections.push(conn);
+    },
+    
+    listener: function(conn) {
+        this.listeners.push(conn);
         
         if(this.message_queue.length)
-            this.respond.apply(this, this.message_queue.shift());
+            this._send.apply(this, this.message_queue.shift());
+    },
+    
+    respond: function(code, message) {
+        this._send('connections', code, message);
     },
 
-    respond: function(code, message, last_only) {
-        if(message == null) {
-            message = code;
-            code = 200;
-        } else if(typeof message == 'boolean' && !last_only) {
-            last_only = message;
+    notify: function(code, message) {
+        if(this.listeners.length)
+            this._send('listeners', code, message);
+        else
+            this.message_queue.push(['listeners', code, message]);
+    },
+    
+    _send: function($conn, code, message) {
+        if(!message) {
             message = code;
             code = 200;
         }
@@ -30,24 +42,22 @@ var SessionBase = Base.extend({
         if(typeof message == 'object' ||
            typeof message == 'array')
             message = JSON.encode(message);
-        
-        if(this.connections.length) {
-            var $conn = this.connections,
+
+        if($conn.length) {
+            var $sx = this[$conn],
                 next_conn = function() {
-                    if(conn = $conn.pop()) {
+                    if(conn = $sx.pop()) {
                         var callback = (conn.param('callback') || '')
                                         .replace(/[^A-Za-z0-9_]/, '');
                         conn.respond(code,
                                     callback ?
                                     sprintf('%s(%s)', callback, message) :
                                     message,
-                                    last_only ? false : next_conn
+                                    $conn == 'listeners' ? next_conn : false
                         );
                     }
                 };
             next_conn();
-        } else {
-            this.message_queue.push([code, message, last_only]);
         }
     },
 
@@ -220,12 +230,21 @@ Session.Djangofied = Plugin.extend({
                     }
 
                     event.request.session = session;
-                    event.request.session.connection(event.request);
                     event.request.session.touch();
-                    callback();
                     
-                    if(fresh && event.request.url.pathname === '/listen')
-                        session.respond({type: 'noop'});
+                    if(event.request.url.pathname === '/listen') {
+                        event.request.session.listener(event.request);
+                        
+                        if(fresh) {
+                            callback();
+                            event.request.session.notify({type: 'noop'});
+                        } else {
+                            callback();
+                        }
+                    } else {
+                        event.request.session.connection(event.request);
+                        callback();
+                    }
                 });
             } else {
                 event.request.redirect(LOGIN_URL);

@@ -254,8 +254,10 @@ exports.Room = new Class({
                         topic: this.topic};
         if(this._private && user.type == 'agent') {
             join_msg.guest = this.guest.data;
+            user.respond(join_msg);
+        } else if(this._private) {
+            user.notify(join_msg);
         }
-        user.respond(join_msg, true);
         // list other users
         
         this.send(new exports.Notification(user, 'joined'));
@@ -281,7 +283,7 @@ exports.Room = new Class({
         this.users.each(function(user) {
             if(user.type != 'guest')
                 user.unassignGuest(self.guest);
-            user.respond({type: 'end', room: self.toString()});
+            user.notify({type: 'end', room: self.toString()});
         });
     },
 
@@ -305,7 +307,7 @@ exports.Room = new Class({
         message.room = this.id;
         var recips = this.users.slice();
         while(to = recips.shift())
-            to.respond(message.toString());
+            to.notify(message.toString());
         
         this.touch();
     },
