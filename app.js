@@ -31,6 +31,16 @@ get('/', function() {
     this.session.respond(200, sys.inspect(this.session), true);
 });
 
+get('/c', function() {
+    this.render('chat.html.haml', {
+        locals: {
+            'title': this.session.get('username') + 
+                     ' | ' + this.session.type + ' | Mozilla Live Chat',
+            'js': this.session.type
+        }
+    });
+});
+
 get('/listen', function() {
     chat.manager.putGuestInQueue(this.session);
 });
