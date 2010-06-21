@@ -1,6 +1,7 @@
 var utils = require('express/utils'),
     models = require('./models'),
-    chat = require('./chat');
+    chat = require('./chat'),
+    sys = require('sys');
 
 var SessionBase = Base.extend({
     constructor: function(id) {
@@ -12,27 +13,33 @@ var SessionBase = Base.extend({
     },
 
     connection: function(conn) {
-        this.connections.push(conn);
+        this._req('connections', conn);
+    },
+
+    listener: function(conn) {
+        this._req('listeners', conn);
     },
     
-    listener: function(conn) {
-        this.listeners.push(conn);
-        
+    _req: function($conn, req) {
+        this[$conn] = req;
+
         if(this.message_queue.length)
             this._send.apply(this, this.message_queue.shift());
     },
-    
+
     respond: function(code, message) {
         this._send('connections', code, message);
     },
 
     notify: function(code, message) {
-        if(this.listeners.length)
-            this._send('listeners', code, message);
-        else
-            this.message_queue.push(['listeners', code, message]);
+        this._send('listeners', code, message);
     },
-    
+
+    _queue: function(data) {
+        if(!~this.message_queue.indexOf(data))
+            this.message_queue.push(data);
+    },
+
     _send: function($conn, code, message) {
         if(!message) {
             message = code;
@@ -43,10 +50,11 @@ var SessionBase = Base.extend({
            typeof message == 'array')
             message = JSON.encode(message);
 
-        if($conn.length) {
+        if(this[$conn].length) {
             var $sx = this[$conn],
                 next_conn = function() {
                     if(conn = $sx.pop()) {
+                        sys.puts(conn.param('cid') || 'no cid?');
                         var callback = (conn.param('callback') || '')
                                         .replace(/[^A-Za-z0-9_]/, '');
                         conn.respond(code,
@@ -58,6 +66,8 @@ var SessionBase = Base.extend({
                     }
                 };
             next_conn();
+        } else {
+            this._queue(arguments);
         }
     },
 
@@ -88,6 +98,10 @@ var Agent = SessionBase.extend({
         this.type = 'agent';
         this.guests = [];
 
+        var self = this;
+        chat.manager.events.addListener('message', function(obj) {
+            self.notify(obj.toString());
+        });
         chat.manager.agentAvailable(this);
     },
 
@@ -99,7 +113,7 @@ var Agent = SessionBase.extend({
         if(!this.available)
             chat.manager.agentUnavailable(this);
     },
-    
+
     unassignGuest: function(guest) {
         // Unassign a 'Guest' from this 'Agent'
         var pos = this.guests.indexOf(guest);
@@ -138,11 +152,11 @@ var Guest = SessionBase.extend({
     toString: function() {
         return this.get('username');
     },
-    
+
     assignAgent: function(agent) {
         this.agent = agent;
     },
-    
+
     unassignAgent: function() {
         this.agent = null;
     }
@@ -159,7 +173,11 @@ Store.MemoryExtended = Store.Memory.extend({
         if(sid && this.store[sid]) {
             callback(null, this.store[sid]);
         } else {
-            this.generate(sid, callback);
+            var self = this;
+            this.generate(sid, function(err, session, fresh) {
+                if(!err) self.commit(session);
+                callback(err, session, fresh);
+            });
         }
     },
 
@@ -206,15 +224,15 @@ Session.Djangofied = Plugin.extend({
     on: {
         request: function(event, callback, fresh) {
             var sid = event.request.cookie('sessionid');
-            if(event.request.url.pathname === '/favicon.ico')
+            if(!sid && event.request.url.pathname === '/favicon.ico')
                 return;
             if(sid) {
                 Session.Djangofied.store.fetch(sid, function(err, session, fresh) {
-                    if(err) return callback(err);      
-                    
+                    if(err) return callback(err);
+
                     var csrftok = event.request.cookie('_csrf') ||
                                   event.request.param('_csrf');
-                                  
+
                     if(!fresh && session.csrf_token != csrftok) {
                         event.request.respond(400, JSON.encode({
                                                         type: 'error',
@@ -231,20 +249,13 @@ Session.Djangofied = Plugin.extend({
 
                     event.request.session = session;
                     event.request.session.touch();
-                    
-                    if(event.request.url.pathname === '/listen') {
+
+                    if(event.request.url.pathname === '/listen')
                         event.request.session.listener(event.request);
-                        
-                        if(fresh) {
-                            callback();
-                            event.request.session.notify({type: 'noop'});
-                        } else {
-                            callback();
-                        }
-                    } else {
+                    else
                         event.request.session.connection(event.request);
-                        callback();
-                    }
+
+                    callback();
                 });
             } else {
                 event.request.redirect(LOGIN_URL);

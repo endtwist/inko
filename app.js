@@ -34,7 +34,7 @@ get('/', function() {
 get('/c', function() {
     this.render('chat.html.haml', {
         locals: {
-            'title': this.session.get('username') + 
+            'title': this.session.get('username') +
                      ' | ' + this.session.type + ' | Mozilla Live Chat',
             'js': this.session.type
         }

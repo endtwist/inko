@@ -1,4 +1,6 @@
-var utils = require('express/utils');
+var utils = require('express/utils'),
+    events = require('events'),
+    sys = require('sys');
 
 exports.manager = new (new Class({
     constructor: function() {
@@ -6,14 +8,15 @@ exports.manager = new (new Class({
         this.available_agents = [];
         this.unavailable_agents = [];
         this.guests = [];
-        
+        this.events = new events.EventEmitter();
+
         this.grim_reaper = setInterval(this.reaper, (5).seconds, this);
     },
 
     putGuestInQueue: function(guest) {
         if(guest.type != 'guest')
             return false;
-        
+
         if(!~this.guests.indexOf(guest) && !guest.agent)
             this.queueGuest(guest);
     },
@@ -28,11 +31,14 @@ exports.manager = new (new Class({
         }
 
         if(agent.available && this.guests.length) {
-            var guest = this.guests.shift();
+            var guest = this.dequeueGuest();
             agent.assignGuest(guest);
 
             var room = new exports.Room(agent, guest);
             this.rooms[room.toString()] = room;
+
+            this.events.emit('message',
+                             new exports.Update([guest, agent], 'assigned'));
         } else {
             (requested_by || agent).respond({
                 type: 'error',
@@ -61,6 +67,8 @@ exports.manager = new (new Class({
         if(-~(pos = this.unavailable_agents.indexOf(agent)))
             this.unavailable_agents.splice(pos, 1);
         this._sortAgents();
+        this.events.emit('message',
+                         new exports.Update([agent], 'available'));
     },
 
     agentUnavailable: function(agent) {
@@ -68,6 +76,8 @@ exports.manager = new (new Class({
         if(-~(pos = this.available_agents.indexOf(agent)))
             this.available_agents.splice(pos, 1);
         this._sortAgents();
+        this.events.emit('message',
+                         new exports.Update([agent], 'unavailable'));
     },
 
     _sortAgents: function() {
@@ -81,10 +91,15 @@ exports.manager = new (new Class({
 
     queueGuest: function(guest) {
         this.guests.push(guest);
+        this.events.emit('message',
+                         new exports.Update([guest], 'queued'));
     },
 
-    dequeueGuest: function(guest, callback) {
-        callback(this.guests.shift());
+    dequeueGuest: function() {
+        var guest = this.guests.shift();
+        this.events.emit('message',
+                         new exports.Update([guest], 'dequeued'));
+        return guest;
     },
 
     get queue() {
@@ -103,7 +118,7 @@ exports.manager = new (new Class({
         var room = new exports.Room([user], false);
         this.rooms[room.toString()] = room;
     },
-    
+
     destroyRoom: function(user, room) {
         if(room in this.rooms) {
             if(-~this.rooms[room].users.indexOf(user)) {
@@ -138,7 +153,7 @@ exports.manager = new (new Class({
 
         return room_obj;
     },
-    
+
     reaper: function(self) {
         for(room in self.rooms) {
             var $room = self.rooms[room];
@@ -202,12 +217,33 @@ exports.Notification = Package.extend({
         this.user = user;
         this.details = details;
     },
-    
+
     toString: function() {
         return JSON.encode(
             {type: 'notification',
              room: this.room,
              user: this.user.get('username'),
+             details: this.details}
+        );
+    }
+});
+
+exports.Update = Package.extend({
+    constructor: function(users, details) {
+        this.users = users;
+        this.details = details;
+
+        var usernames = [];
+        this.users.each(function(user) {
+            usernames.push(user.get('username'));
+        });
+        this.usernames = usernames;
+    },
+
+    toString: function() {
+        return JSON.encode(
+            {type: 'update',
+             users: this.usernames,
              details: this.details}
         );
     }
@@ -222,7 +258,7 @@ exports.Room = new Class({
 
         if(!(users instanceof Array))
             users = [users];
-        
+
         if(guest) {
             users.push(guest);
             this.guest = guest;
@@ -231,7 +267,6 @@ exports.Room = new Class({
         var self = this;
         users.each(function(user) {
             self.join(user, true);
-            self.users.push(user);
         });
     },
 
@@ -259,7 +294,7 @@ exports.Room = new Class({
             user.notify(join_msg);
         }
         // list other users
-        
+
         this.send(new exports.Notification(user, 'joined'));
     },
 
@@ -271,15 +306,15 @@ exports.Room = new Class({
             user.respond({type: 'error', error: 'not in room'});
             return false;
         }
-        
+
         this.send(new exports.Notification(user, 'left'));
     },
-    
+
     end: function() {
         var self = this;
         if(this.guest)
             this.guest.unassignAgent();
-            
+
         this.users.each(function(user) {
             if(user.type != 'guest')
                 user.unassignGuest(self.guest);
@@ -308,18 +343,18 @@ exports.Room = new Class({
         var recips = this.users.slice();
         while(to = recips.shift())
             to.notify(message.toString());
-        
+
         this.touch();
     },
 
     toString: function() {
         return this.id;
     },
-    
+
     touch: function() {
         this.last_activity = Date.now();
     },
-    
+
     get _private() {
         return !!this.guest;
     }

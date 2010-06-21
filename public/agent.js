@@ -59,5 +59,31 @@ uki(
    ]
 }).attachTo(window, '1000 800', {minSize: '300 0'});
 
+/*
 for(var i = 0; i < 50; i++)
     uki('#helping>List').addRow(0, '<strong>text</strong>');
+*/
+
+var AgentChat = function(agent) {
+    $.ajaxSetup({cache: false});
+
+    this.agent = agent;
+    this.listen();
+};
+
+$.extend(AgentChat.prototype, {
+    listen: function() {
+        var self = this;
+        $.getJSON('/listen', function(data) {
+            $('#messages').append($('<p>').html(JSON.stringify(data)));
+            
+            setTimeout(function() {
+                self.listen();
+            }, 0);
+        });
+    }
+});
+
+$(function() {
+    new AgentChat('');
+});
