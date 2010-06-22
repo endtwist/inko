@@ -33,8 +33,15 @@ Install dbslayer:
     make
     make install
 
+If running locally, create or get an SSL certificate
+    http://sial.org/howto/openssl/self-signed/
+
 Create a local settings file by copying settings.js to settings.local.js
     cp settings.js settings.local.js
+
+Set the path to your SSL `.key` and `.cert` files in settings.local.js
+    SSL_KEY = '.../your.key'
+    SSL_CERT = '.../your.cert'
 
 Create a local dbslayer config file by copying configs/dbslayer.prod.cnf to configs/dbslayer.local.cnf
     cp configs/dbslayer.prod.cnf configs/dbslayer.local.cnf

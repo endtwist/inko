@@ -176,7 +176,7 @@ var Package = new Class({
 exports.Message = Package.extend({
     constructor: function(from, body) {
         this.room = '';
-        this.from = from;
+        this.user = from;
         this.body = body;
         this.sent = Date.now();
     },
@@ -185,7 +185,7 @@ exports.Message = Package.extend({
         return JSON.encode(
             {type: 'message',
              room: this.room,
-             user: this.from.get('username'),
+             user: this.user.get('username'),
              body: this._sanitize(this.body),
              sent: this.sent}
         );
@@ -274,7 +274,7 @@ exports.Room = new Class({
         if(!primary_users &&
            this._private &&
            !~user.get('perms').indexOf(MONITOR_PERM)) {
-            user.respond(403, {type: 'error', error: 'no permissions'});
+            user.respond({type: 'error', error: 'no permissions'});
             return;
         }
 
@@ -324,7 +324,7 @@ exports.Room = new Class({
 
     send: function(message) {
         if(!~this.users.indexOf(message.user)) {
-            message.user.respond(403, {
+            message.user.respond({
                 type: 'error',
                 error: 'no permissions'
             });

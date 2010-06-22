@@ -21,7 +21,7 @@ var SessionBase = Base.extend({
     },
     
     _req: function($conn, req) {
-        this[$conn] = req;
+        this[$conn].push(req);
 
         if(this.message_queue.length)
             this._send.apply(this, this.message_queue.shift());
@@ -54,7 +54,6 @@ var SessionBase = Base.extend({
             var $sx = this[$conn],
                 next_conn = function() {
                     if(conn = $sx.pop()) {
-                        sys.puts(conn.param('cid') || 'no cid?');
                         var callback = (conn.param('callback') || '')
                                         .replace(/[^A-Za-z0-9_]/, '');
                         conn.respond(code,

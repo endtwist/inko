@@ -18,3 +18,7 @@ AGENT_MAX_GUESTS = 1
 
 // Chat Defaults
 MAX_CHAT_INACTIVITY = (5).minutes
+
+// SSL Certificate Files
+SSL_KEY = 'inko.key'
+SSL_CERT = 'inko.cert'
