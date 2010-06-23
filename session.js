@@ -223,7 +223,8 @@ Session.Djangofied = Plugin.extend({
     on: {
         request: function(event, callback, fresh) {
             var sid = event.request.cookie('sessionid');
-            if(!sid && event.request.url.pathname === '/favicon.ico')
+            if(-~event.request.url.pathname.indexOf('/public/') ||
+                event.request.url.pathname === '/favicon.ico')
                 return;
             if(sid) {
                 Session.Djangofied.store.fetch(sid, function(err, session, fresh) {

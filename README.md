@@ -46,6 +46,15 @@ Set the path to your SSL `.key` and `.cert` files in settings.local.js
 Create a local dbslayer config file by copying configs/dbslayer.prod.cnf to configs/dbslayer.local.cnf
     cp configs/dbslayer.prod.cnf configs/dbslayer.local.cnf
 
+Add the permissions to your database
+    mysql -u username -p kitsune < app_perms.sql
+
+Add one of your users to the 'Live Chat Agent' permissions group either through the Django admin panel or SQL
+    INSERT INTO auth_user_groups (user_id, group_id) VALUES(
+        (SELECT id FROM `auth_user` WHERE username='yourusername' LIMIT 1),
+        (SELECT id FROM `auth_group` WHERE name='Live Chat Agent' LIMIT 1)
+    );
+
 ## Starting up
 
 There is a script in the root of this project named `inko` that allows you to quickly and easily boot up all server components.
