@@ -1,10 +1,10 @@
+require.paths.unshift(require.paths[0] + '/express');
 require.paths.unshift('./libs');
-var kiwi = require('kiwi'),
-    sys = require('sys'),
+var sys = require('sys'),
     fs = require('fs'),
     crypto = require('crypto');
 
-kiwi.require('express', '= 0.13.0');
+require('express');
 require('express/plugins');
 Object.merge(global, require('ext'));
 

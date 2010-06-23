@@ -59,10 +59,9 @@ uki(
    ]
 }).attachTo(window, '1000 800', {minSize: '300 0'});
 
-/*
+
 for(var i = 0; i < 50; i++)
     uki('#helping>List').addRow(0, '<strong>text</strong>');
-*/
 
 var AgentChat = function(agent) {
     $.ajaxSetup({cache: false});
