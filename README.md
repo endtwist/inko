@@ -55,6 +55,19 @@ Add one of your users to the 'Live Chat Agent' permissions group either through 
         (SELECT id FROM `auth_group` WHERE name='Live Chat Agent' LIMIT 1)
     );
 
+## Getting SSL working (`https`)
+
+Because `https` seems to be broken in Node.js when sending "large" files (> 10kb) to clients, if you want SSL,
+you will need to proxy it over another server. Included in `configs/` is the file `apache2-inko.conf`, which contains
+a very basic configuration for proxying through Apache2.
+
+To use this configuration, `Include` the conf file in your Apache configuration.
+    Include /path/to/inko/configs/apache2-inko.conf
+
+You will need to adjust the `SSLCertificateFile` and `SSLCertificateKeyFile` to point toward your SSL key and cert.
+Also, if you are not running Inko at `localhost:3000`, change the host:port pointers in the `ProxyPass` and `ProxyPassReverse`
+configuration items.
+
 ## Starting up
 
 There is a script in the root of this project named `inko` that allows you to quickly and easily boot up all server components.

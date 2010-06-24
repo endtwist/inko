@@ -110,17 +110,3 @@ get('/sendmsg', function(name) {
 });
 
 var server = run(APP_PORT, APP_HOST);
-
-if(SSL_KEY && SSL_CERT) {
-    try {
-        var cred_key = fs.readFileSync(SSL_KEY, 'ascii'),
-            cred_cert = fs.readFileSync(SSL_CERT, 'ascii');
-        
-        server.setSecure(crypto.createCredentials({
-            key: cred_key,
-            cert: cred_cert
-        }));
-    } catch(e) {
-        sys.log('Could not find SSL key/cert; server will not run on HTTPS!');
-    }
-}
