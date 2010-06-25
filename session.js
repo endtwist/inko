@@ -10,6 +10,20 @@ var SessionBase = Base.extend({
         this.listeners = [];
         this.message_queue = [];
         this.csrf_token = '';
+        
+        setInterval(this._expireConns.bind(this), 500);
+    },
+    
+    _expireConns: function() {
+        var conn;
+        for(var i = 0; i < this.listeners.length; i++) {
+            conn = this.listeners[i].connection;
+            if((Date.now() - conn._idleStart) >= conn._idleTimeout - 1000) {
+                this.listeners[i].respond(200, JSON.encode({type: 'noop'}));
+                this.listeners.splice(i, 1);
+                i--;
+            }
+        }
     },
 
     connection: function(conn) {
@@ -250,9 +264,10 @@ Session.Djangofied = Plugin.extend({
                     event.request.session = session;
                     event.request.session.touch();
 
-                    if(event.request.url.pathname === '/listen')
+                    if(event.request.url.pathname === '/listen') {
                         event.request.session.listener(event.request);
-                    else
+                        event.request.connection.setTimeout((5).minutes);
+                    } else
                         event.request.session.connection(event.request);
 
                     callback();
