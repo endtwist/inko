@@ -18,7 +18,7 @@ var SessionBase = Base.extend({
         var conn;
         for(var i = 0; i < this.listeners.length; i++) {
             conn = this.listeners[i].connection;
-            if((Date.now() - conn._idleStart) >= conn._idleTimeout - 1000) {
+            if((Date.now() - conn._idleStart) >= conn._idleTimeout - 2000) {
                 this.listeners[i].respond(200, JSON.encode({type: 'noop'}));
                 this.listeners.splice(i, 1);
                 i--;
