@@ -1,18 +1,28 @@
+uki.view.list.Render = uki.newClass(uki.view.list.Render, {
+    render: function(data, rect, i) {
+        data = data['text'] ? data['text'] : data;
+        return '<div style="line-height: ' + rect.height + 'px; font-size: 12px; padding: 0 4px;">' + data + '</div>';
+    }
+});
+
 uki(
 { view: 'HSplitPane', rect: '1000 800', anchors: 'left top right bottom',
     handlePosition: 150, leftMin: 150, rightMin: 500, handleWidth: 1,
+    background: '#EDF3FE',
     leftChildViews: [
-        { view: 'Box', rect: '150 30',
-          anchors: 'top left right',
-          background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999)',
+        { view: 'Button', rect: '10 10 130 30', anchors: 'top left right',
+          text: 'Assist Guest', id: 'assist-guest',
+        },
+        { view: 'Box', rect: '0 50 150 30', anchors: 'top left right',
+          background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999;border-top:1px solid #999;)',
           childViews: [
               { view: 'Label', rect: '10 0 150 30',
                 anchors: 'top left right bottom', html: 'Users' }
           ]
         },
-        { view: 'ScrollPane', rect: '0 30 150 800',
+        { view: 'ScrollPane', rect: '0 80 150 720',
           anchors: 'top left right bottom', childViews: [
-              { view: 'uki.more.view.TreeList', rect: '150 800',
+              { view: 'uki.more.view.TreeList', rect: '150 720',
                 anchors: 'top left right bottom', rowHeight: 22,
                 style: {fontSize: '12px'}, id: 'users',
                 data: [
@@ -60,16 +70,13 @@ uki(
                 ]
               },
               { view: 'ScrollableList', rect: '0 30 150 800',
-                anchors: 'top left right bottom', id: 'helping'
+                anchors: 'top left right bottom', id: 'helping',
+                data: []
               }
           ]
         }
    ]
 }).attachTo(window, '1000 800', {minSize: '300 0'});
-
-
-for(var i = 0; i < 50; i++)
-    uki('#helping>List').addRow(0, '<strong>text</strong>');
 
 var Agent = function(username) {
     var self = this;
@@ -193,16 +200,57 @@ var Guest = function(username, queued) {
     this.constructor();
 };
 
+var Room = function(name, topic, guest) {
+    var self = this;
+
+    this.constructor = function() {
+        this.name = name;
+        this.topic = topic;
+        this.users = [];
+        this._private = false;
+
+        if(guest && guest['username']) {
+            this._private = true;
+            this.guest = guest;
+            
+            var list = uki('#helping>List');
+            list.data($.merge(list.data(), [{
+                room: this.name,
+                text: guest.username
+            }]));
+        }
+    };
+
+    this.join = function(username) {
+        this.users.push(username);
+        console.log(username + ' joined room ' + this.name);
+        // notify...
+    };
+
+    this.leave = function(username) {
+        if(pos = $.inArray(this.users, username)) {
+            this.users.splice(pos, 1);
+        }
+        console.log(username + ' left room ' + this.name);
+        // notify...
+    };
+    
+    this.constructor();
+};
+
 var AgentChat = function(agent) {
     $.ajaxSetup({cache: false});
+    var self = this;
 
     $('#messages').append($('<ul>'));
+    $('#assist-guest').click(function() { self.assist(); });
 
     this.agent = agent;
     this.actions = {
         'signon': this.initialize,
         'update': this.update,
         'message': this.message,
+        'notification': this.notification,
         'join': this.join,
         'leave': this.leave,
         'end': this.end
@@ -257,6 +305,19 @@ $.extend(AgentChat.prototype, {
         });
     },
 
+    assist: function() {
+        // Should check if Agent is available
+        // and if there are any queued guests...
+        
+        var self = this;
+        $.getJSON('/assist', function(data) {
+            if(data.type == 'joined') {
+                self.rooms[data.room] =
+                    new Room(data.room, data.topic, data.guest);
+            }
+        });
+    },
+
     update: function(data) {
         if(data.users.length == 1) {
             var user = data.users[0];
@@ -304,11 +365,22 @@ $.extend(AgentChat.prototype, {
             )
         );
     },
-
-    join: function() {
+    
+    notification: function(data) {
+        switch(data.details) {
+            case 'joined': this.join(data); break;
+            case 'left': this.leave(data); break;
+        }
     },
 
-    leave: function() {
+    join: function(data) {
+        if(data.room in this.rooms)
+            this.rooms[data.room].join(data.user);
+    },
+
+    leave: function(data) {
+        if(data.room in this.rooms)
+            this.rooms[data.room].leave(data.user);
     },
 
     end: function(data) {
