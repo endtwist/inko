@@ -1,4 +1,5 @@
 var utils = require('express/utils'),
+    events = require('events'),
     models = require('./models'),
     chat = require('./chat'),
     sys = require('sys');
@@ -111,11 +112,7 @@ var Agent = SessionBase.extend({
         this.type = 'agent';
         this.guests = [];
 
-        var self = this;
-        chat.manager.events.addListener('message', function(obj) {
-            self.notify(obj.toString());
-        });
-        chat.manager.agentAvailable(this);
+        Session.Djangofied.events.emit('signedOn', this);
     },
 
     assignGuest: function(guest) {
@@ -124,7 +121,7 @@ var Agent = SessionBase.extend({
         guest.agent = this;
 
         if(!this.available)
-            chat.manager.agentUnavailable(this);
+            Session.Djangofied.events.emit('unavailable', this);
     },
 
     unassignGuest: function(guest) {
@@ -220,11 +217,13 @@ Store.MemoryExtended = Store.Memory.extend({
 Session.Djangofied = Plugin.extend({
     extend: {
         init: function(options) {
-            this.cookie = {}
-            Object.merge(this, options)
-            this.cookie.httpOnly = true
-            this.store = new (this.dataStore || exports.Store.Memory)(options)
-            this.startReaper()
+            this.cookie = {};
+            Object.merge(this, options);
+            this.cookie.httpOnly = true;
+            this.store = new (this.dataStore || exports.Store.Memory)(options);
+            this.startReaper();
+            this.events = new events.EventEmitter();
+            chat.manager.sessionHandler = this;
         },
 
         startReaper: function() {

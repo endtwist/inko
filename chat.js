@@ -10,7 +10,30 @@ exports.manager = new (new Class({
         this.guests = [];
         this.events = new events.EventEmitter();
 
-        this.grim_reaper = setInterval(this.reaper, (5).seconds, this);
+        this.grim_reaper = setInterval(this.reaper.bind(this), (5).seconds);
+    },
+
+    set sessionHandler(sh) {
+        var self = this;
+        sh.events.addListener('signedOn', function(session) {
+            if(session.type == 'agent') {
+                self.events.addListener('message', function(obj) {
+                    session.notify(obj.toString());
+                });
+
+                self.agentAvailable(session);
+
+                session.notify(JSON.stringify({
+                    type: 'signon',
+                    users: self.userList()
+                }));
+            }
+        });
+
+        sh.events.addListener('unavailable',
+            function(session) {
+                self.agentUnavailable(session);
+            });
     },
 
     putGuestInQueue: function(guest) {
@@ -154,15 +177,31 @@ exports.manager = new (new Class({
         return room_obj;
     },
 
-    reaper: function(self) {
-        for(room in self.rooms) {
-            var $room = self.rooms[room];
+    reaper: function() {
+        for(room in this.rooms) {
+            var $room = this.rooms[room];
             if($room._private &&
                $room.last_activity < (Date.now() - MAX_CHAT_INACTIVITY)) {
                $room.end();
-               delete self.rooms[room];
+               delete this.rooms[room];
             }
         }
+    },
+
+    userList: function() {
+        return {
+            available_agents: this.available_agents.map(function(agent) {
+                                  return agent.get('username');
+                              }),
+            unavailable_agents: this.unavailable_agents.map(function(agent) {
+                                    return agent.get('username');
+                                }),
+            guests: this.guests.map(function(guest) {
+                        return [guest.get('username'),
+                                guest.agent ? guest.agent.guest('username') :
+                                              ''];
+                    })
+        };
     }
 }));
 

@@ -71,29 +71,34 @@ uki(
 for(var i = 0; i < 50; i++)
     uki('#helping>List').addRow(0, '<strong>text</strong>');
 
-var Agent = function(username, avail) {
+var Agent = function(username) {
     var self = this;
-    
+
     this.constructor = function() {
         this.username = username;
         this._availability = null;
-        
+
         this.guests = [];
     };
-    
+
     this.availability = function(avail) {
         if(!avail) return this._availability;
-        
+
         var users = uki('#users'),
             user_data = users.data();
-        
+
         $.each(user_data, function(uidx, value) {
             if(value.type == avail) {
-                value.children.push({
-                    data: self.username,
-                    guest: null
-                });
-            } else if(value.type == self._availability) {
+                if(!$.grep(value.children, function(child) {
+                   return child.data == self.username;
+                }).length) {
+                    value.children.push({
+                        data: self.username,
+                        guest: null
+                    });
+                }
+            } else if(value.type == self._availability &&
+                      avail != self._availability) {
                 $.each(value.children, function(vidx, user) {
                     if(user.data == self.username) {
                         user_data[uidx].children.splice(vidx, 1);
@@ -102,15 +107,15 @@ var Agent = function(username, avail) {
                 });
             }
         });
-        
+
         users.data(user_data);
         this._availability = avail;
     };
-    
+
     this.assign = function(guest) {
         var users = uki('#users'),
             user_data = users.data();
-            
+
         $.each(user_data, function(uidx, value) {
             if(value.type == self._availability) {
                 $.each(value.children, function(vidx, user) {
@@ -119,15 +124,15 @@ var Agent = function(username, avail) {
                         return false;
                     }
                 });
-                
+
                 return false;
             }
         });
-        
+
         users.data(user_data);
         this.guests.push(guest);
     };
-    
+
     this.unassign = function(guest) {
         if(!~(pos = this.guests.indexOf(guest)))
             return false;
@@ -145,38 +150,38 @@ var Agent = function(username, avail) {
                         return false;
                     }
                 });
-                
+
                 return false;
             }
         });
-        
+
         users.data(user_data);
     }
-    
+
     this.constructor();
 };
 
 var Guest = function(username, queued) {
     var self = this;
-    
+
     this.constructor = function() {
         this.username = username;
         this._queued = queued;
-        
+
         var users = uki('#users'),
             user_data = users.data();
-            
+
         user_data[2].children.push({
             data: username
         });
     };
-    
+
     this.dequeue = function() {
         var users = uki('#users'),
             user_data = users.data();
-            
+
         this._queued = false;
-        
+
         $.each(user_data[2].children, function(vidx, user) {
             if(user.data == self.username) {
                 user_data[2].children.splice(vidx, 1);
@@ -184,7 +189,7 @@ var Guest = function(username, queued) {
             }
         });
     };
-    
+
     this.constructor();
 };
 
@@ -195,18 +200,19 @@ var AgentChat = function(agent) {
 
     this.agent = agent;
     this.actions = {
+        'signon': this.initialize,
         'update': this.update,
         'message': this.message,
         'join': this.join,
         'leave': this.leave,
         'end': this.end
     };
-    
+
     this.agents = {};
     this.guests = {};
-    
+
     this.rooms = {};
-    
+
     this.listen();
 };
 
@@ -215,36 +221,62 @@ $.extend(AgentChat.prototype, {
         var self = this;
         $.getJSON('/listen', function(data) {
             console.log(JSON.stringify(data));
-            
+
             if(data.type in self.actions)
                 self.actions[data.type].call(self, data);
-            
+
             setTimeout(function() { self.listen(); }, 0);
         });
     },
-    
+
+    initialize: function(data) {
+        var users = data.users,
+            self = this;
+
+        $.each(users.available_agents, function(i, agent) {
+            if(!(agent in self.agents)) {
+                self.agents[agent] = new Agent(agent);
+                self.agents[agent].availability('available');
+            }
+        });
+
+        $.each(users.unavailable_agents, function(i, agent) {
+            if(!(agent in self.agents)) {
+                self.agents[agent] = new Agent(agent);
+                self.agents[agent].availability('unavailable');
+            }
+        });
+
+        $.each(users.guests, function(i, guest) {
+            if(!(guest[0] in self.guests)) {
+                self.guests[guest[0]] = new Guest(guest[0], !!guest[1]);
+                if(!!guest[1]) {
+                    self.agents[guest[1]].assign(self.guests[guest[0]]);
+                }
+            }
+        });
+    },
+
     update: function(data) {
         if(data.users.length == 1) {
             var user = data.users[0];
-            
+
             switch(data.details) {
                 case 'available':
                 case 'unavailable':
-                    if(!(user in this.agents)) {
-                        this.agents[user] =
-                            new Agent(user, data.details);
-                    }
-                    
+                    if(!(user in this.agents))
+                        this.agents[user] = new Agent(user);
+
                     this.agents[user].availability(data.details);
                 break;
-                
+
                 case 'queued':
                     if(!(user in this.guests)) {
                         this.guests[user] =
                             new Guest(user, true);
                     }
                 break;
-                
+
                 case 'dequeued':
                     this.guests[user].dequeue();
                 break;
@@ -256,13 +288,13 @@ $.extend(AgentChat.prototype, {
                        !(data.users[1] in this.guests)) {
                         return false; // error!
                     }
-                    
+
                     this.agents[data.users[0]].assign(data.users[1]);
                 break;
             }
         }
     },
-    
+
     message: function(data) {
         $('#messages>ul').append(
             $('<li>').append(
@@ -272,18 +304,19 @@ $.extend(AgentChat.prototype, {
             )
         );
     },
-    
+
     join: function() {
     },
-    
+
     leave: function() {
     },
-    
+
     end: function(data) {
-        
+
     }
 });
 
+var chat;
 $(function() {
-    new AgentChat('');
+    chat = new AgentChat('');
 });
