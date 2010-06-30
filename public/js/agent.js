@@ -10,18 +10,17 @@ uki(
     handlePosition: 150, leftMin: 150, rightMin: 500, handleWidth: 1,
     background: '#EDF3FE',
     leftChildViews: [
-        { view: 'Button', rect: '10 10 130 30', anchors: 'top left right',
-          text: 'Assist Guest', id: 'assist-guest',
-        },
-        { view: 'Box', rect: '0 50 150 30', anchors: 'top left right',
-          background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999;border-top:1px solid #999;)',
+        { view: 'Box', rect: '150 30', anchors: 'top left right',
+          background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999;)',
           childViews: [
               { view: 'Label', rect: '10 0 150 30',
                 anchors: 'top left right bottom', html: 'Users' }
           ]
         },
-        { view: 'ScrollPane', rect: '0 80 150 720',
-          anchors: 'top left right bottom', childViews: [
+        { view: 'ScrollPane', rect: '0 30 150 720',
+          anchors: 'top left right bottom',
+          background: 'cssBox(border-bottom:1px solid #999;)',
+          childViews: [
               { view: 'uki.more.view.TreeList', rect: '150 720',
                 anchors: 'top left right bottom', rowHeight: 22,
                 style: {fontSize: '12px'}, id: 'users',
@@ -31,30 +30,33 @@ uki(
                     {type: 'guests_q', data: 'Queued Guests', children: []}
                 ] }
           ]
-        }
+        },
+        { view: 'Box', rect: '0 750 150 50', anchors: 'bottom left right',
+          background: 'cssBox(background:#EDF3FE;border-top:1px solid #999;)',
+          childViews: [
+                { view: 'Button', rect: '10 10 130 30',
+                  anchors: 'top left right bottom',
+                  text: 'Assist Guest', id: 'assist-guest'
+                }
+          ]
+        },
     ],
     rightChildViews: [
         { view: 'HSplitPane', rect: '850 800',
           anchors: 'left top right bottom', handleWidth: 1,
           handlePosition: 700, leftMin: 250, rightMin: 150,
           leftChildViews: [
-                { view: 'Box', rect: '700 100',
-                  anchors: 'top left right', id: 'info',
-                  background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999)',
-                  textSelectable: true
+                { view: 'Box', rect: '700 750', anchors: 'top left right bottom',
+                  id: 'chatArea'
                 },
-                { view: 'Box', rect: '0 100 700 660',
-                  anchors: 'top left right bottom', id: 'messages',
-                  background: 'cssBox(background:#fff;overflow-y:auto)',
-                  textSelectable: true
-                },
-                { view: 'Box', rect: '0 760 700 40',
+                { view: 'Box', rect: '0 750 700 50',
                   background: 'cssBox(background:#EDF3FE;border-top:1px solid #999)',
                   anchors: 'left right bottom', childViews: [
-                    { view: 'TextField', rect: '10 10 590 20',
+                    { view: 'TextField', rect: '10 10 590 30',
+                      style: {fontSize: '14px'},
                       anchors: 'top left right bottom', name: 'body', id: 'body'
                     },
-                    { view: 'Button', rect: '610 10 80 20', text: 'Send',
+                    { view: 'Button', rect: '610 10 80 30', text: 'Send',
                       anchors: 'top right', id: 'send'
                     }
                   ]
@@ -77,6 +79,21 @@ uki(
         }
    ]
 }).attachTo(window, '1000 800', {minSize: '300 0'});
+
+var chatView =  { view: 'Box', rect: '700 750', anchors: 'top left right bottom',
+                  childViews: [
+                    { view: 'Box', rect: '700 100',
+                      anchors: 'top left right', className: 'info',
+                      background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999)',
+                      textSelectable: true
+                    },
+                    { view: 'Box', rect: '0 100 700 660',
+                      anchors: 'top left right bottom', className: 'messages',
+                      background: 'cssBox(background:#fff;overflow-y:auto)',
+                      textSelectable: true
+                    },
+                  ]
+                };
 
 var Agent = function(username) {
     var self = this;
@@ -218,7 +235,17 @@ var Room = function(name, topic, guest) {
                 room: this.name,
                 text: guest.username
             }]));
+            
+            var roomView = $.extend(true, {}, chatView);
+            roomView.id = 'room-' + this.name;
+            this.roomView = uki(roomView)
+                            .attachTo($('#chatArea')[0], '700 750');
         }
+    };
+
+    this.show = function() {
+        uki('#chatArea>Box').visible(false);
+        this.roomView.visible(true);
     };
 
     this.join = function(username) {
@@ -244,6 +271,23 @@ var AgentChat = function(agent) {
 
     $('#messages').append($('<ul>'));
     $('#assist-guest').click(function() { self.assist(); });
+    
+    uki('#helping>List').bind('keydown mousedown', function(e) {
+        var listdata = this.data();
+        if(!listdata[this.selectedIndex()] && self.activeRoom) {
+            var list = this;
+            $.each(listdata, function(i, el) {
+                if(el.room == self.activeRoom) {
+                    list.selectedIndex(i);
+                    return false;
+                }
+            });
+        } else {        
+            var item = listdata[this.selectedIndex()];
+            self.rooms[item.room].show();
+            self.activeRoom = item.room;
+        }
+    });
 
     this.agent = agent;
     this.actions = {
@@ -260,6 +304,7 @@ var AgentChat = function(agent) {
     this.guests = {};
 
     this.rooms = {};
+    this.activeRoom = null;
 
     this.listen();
 };
