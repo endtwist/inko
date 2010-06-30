@@ -87,11 +87,11 @@ var chatView =  { view: 'Box', rect: '700 750', anchors: 'top left right bottom'
                       background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999)',
                       textSelectable: true
                     },
-                    { view: 'Box', rect: '0 100 700 660',
+                    { view: 'Box', rect: '0 100 700 650',
                       anchors: 'top left right bottom', className: 'messages',
-                      background: 'cssBox(background:#fff;overflow-y:auto)',
-                      textSelectable: true
-                    },
+                       background: 'cssBox(background:#fff;)',
+                       textSelectable: true
+                    }
                   ]
                 };
 
@@ -240,6 +240,11 @@ var Room = function(name, topic, guest) {
             roomView.id = 'room-' + this.name;
             this.roomView = uki(roomView)
                             .attachTo($('#chatArea')[0], '700 750');
+            
+            var messageListContainer = $(this.roomView.childViews()[1].dom())
+                                       .find('div').css('overflow-y', 'scroll');
+            this.messageList = $('<ol class="message-list">')
+                               .appendTo(messageListContainer);
         }
     };
 
@@ -262,6 +267,18 @@ var Room = function(name, topic, guest) {
         // notify...
     };
     
+    this.addMessage = function(username, message, you) {
+        var msg;
+        if(arguments.length == 1)
+            msg = $('<li class="message-server">').html(username);
+        else
+            msg = $('<li class="' +
+                    (you ? 'message-you' : 'message-them') +
+                    '">').html(message);
+        
+        this.messageList.append(msg);
+    };
+    
     this.constructor();
 };
 
@@ -269,7 +286,6 @@ var AgentChat = function(agent) {
     $.ajaxSetup({cache: false});
     var self = this;
 
-    $('#messages').append($('<ul>'));
     $('#assist-guest').click(function() { self.assist(); });
     
     uki('#helping>List').bind('keydown mousedown', function(e) {
@@ -429,7 +445,8 @@ $.extend(AgentChat.prototype, {
     },
 
     end: function(data) {
-
+        if(data.room in this.rooms)
+            this.rooms[data.room].addMessage('This room has been terminated due to inactivity.');
     }
 });
 
