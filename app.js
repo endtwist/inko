@@ -39,7 +39,8 @@ get('/c', function() {
         locals: {
             'title': this.session.get('username') +
                      ' | ' + this.session.type + ' | Mozilla Live Chat',
-            'js': this.session.type
+            'js': this.session.type,
+            'username': this.session.get('username')
         }
     });
 });

@@ -1,1 +1,3 @@
-    %script{type: 'text/javascript', src: '/public/js/' + js + '.js'}
+
+!= '<script type="text/javascript">var USERNAME = "' + username + '";</script>'
+%script{type: 'text/javascript', src: '/public/js/' + js + '.js'}

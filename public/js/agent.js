@@ -26,7 +26,7 @@ uki(
     background: '#EDF3FE',
     leftChildViews: [
         { view: 'Box', rect: '150 30', anchors: 'top left right',
-          background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999;)',
+          background: 'theme(panel)',
           childViews: [
               { view: 'Label', rect: '10 0 150 30',
                 anchors: 'top left right bottom', html: 'Users' }
@@ -47,7 +47,7 @@ uki(
           ]
         },
         { view: 'Box', rect: '0 750 150 50', anchors: 'bottom left right',
-          background: 'cssBox(background:#EDF3FE;border-top:1px solid #999;)',
+          background: 'theme(panel)',
           childViews: [
                 { view: 'Button', rect: '10 10 130 30',
                   anchors: 'top left right bottom',
@@ -65,7 +65,7 @@ uki(
                   id: 'chatArea'
                 },
                 { view: 'Box', rect: '0 750 700 50',
-                  background: 'cssBox(background:#EDF3FE;border-top:1px solid #999)',
+                  background: 'theme(panel)',
                   anchors: 'left right bottom', childViews: [
                     { view: 'TextField', rect: '10 10 590 30',
                       style: {fontSize: '14px'},
@@ -80,7 +80,7 @@ uki(
           rightChildViews: [
               { view: 'Box', rect: '150 30',
                 anchors: 'top left right',
-                background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999)',
+                background: 'theme(panel)',
                 childViews: [
                     { view: 'Label', rect: '10 0 150 30',
                       anchors: 'top left right bottom', html: 'Active Conversations' }
@@ -98,20 +98,22 @@ uki(
    ]
 }).attachTo(window, '1000 800', {minSize: '300 0'});
 
-var chatView =  { view: 'Box', rect: '700 750', anchors: 'top left right bottom',
-                  childViews: [
-                    { view: 'Box', rect: '700 100',
-                      anchors: 'top left right', className: 'info',
-                      background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999)',
-                      textSelectable: true
-                    },
-                    { view: 'Box', rect: '0 100 700 650',
-                      anchors: 'top left right bottom', className: 'messages',
-                       background: 'cssBox(background:#fff;)',
-                       textSelectable: true
-                    }
-                  ]
-                };
+function chatView() {
+    return { view: 'Box', rect: '700 750', anchors: 'top left right bottom',
+             childViews: [
+               { view: 'Box', rect: '700 100',
+                 anchors: 'top left right', className: 'info',
+                 background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999)',
+                 textSelectable: true
+               },
+               { view: 'Box', rect: '0 100 700 650',
+                 anchors: 'top left right bottom', className: 'messages',
+                  background: 'cssBox(background:#fff;)',
+                  textSelectable: true
+               }
+             ]
+           };
+}
 
 var Agent = function(username) {
     var self = this;
@@ -256,7 +258,7 @@ var Room = function(name, topic, guest) {
                 text: guest.username
             }]));
 
-            var roomView = $.extend(true, {}, chatView);
+            var roomView = chatView();
             roomView.id = 'room-' + this.name;
             this.roomView = uki(roomView)
                             .attachTo($('#chatArea')[0], '700 750');
@@ -290,6 +292,10 @@ var Room = function(name, topic, guest) {
         console.log(username + ' left room ' + this.name);
         // notify...
     };
+    
+    this.send = function(message) {
+        $.post('/message', {id: this.name, body: message});
+    };
 
     this.addMessage = function(username, message, you) {
         var msg;
@@ -298,7 +304,7 @@ var Room = function(name, topic, guest) {
         else
             msg = $('<li class="' +
                     (you ? 'message-you' : 'message-them') +
-                    '">').html(message);
+                    '">').html('<span>' + username + ':</span> ' + message);
 
         this.messageList.append(msg);
     };
@@ -338,13 +344,35 @@ var AgentChat = function(agent) {
         $.getJSON('/end/' + room);
 
         list.removeRow(index);
-        if(listdata[index+1]) list.selectedIndex(index);
-        else if(listdata[index-1]) list.selectIndex(index-1);
+        if(listdata[index+1]) {
+            list.selectedIndex(index);
+            self.activeRoom = listdata[index].room;
+        } else if(listdata[index-1]) {
+            list.selectIndex(index-1);
+            self.activeRoom = listdata[index].room;
+        } else {
+            self.activeRoom = null;
+        }
 
         self.rooms[room].destroy();
         delete self.rooms[room];
 
+        if(!self.activeRoom)
+            self.messageControlsDisabled(true);
+
         return false;
+    });
+    
+    var sendAction = function(e) {
+        if(!self.activeRoom)
+            self.messageControlsDisabled(true);
+        
+        self.rooms[self.activeRoom].send(uki('#body').value());
+        uki('#body').value('');
+    };
+    uki('#send').bind('click', sendAction);
+    uki('#body').bind('keyup', function(e) {
+        (e.domEvent.which == 13 && sendAction.call(this));
     });
 
     this.agent = agent;
@@ -364,6 +392,7 @@ var AgentChat = function(agent) {
     this.rooms = {};
     this.activeRoom = null;
 
+    this.messageControlsDisabled(true);
     this.listen();
 };
 
@@ -417,6 +446,18 @@ $.extend(AgentChat.prototype, {
             if(data.type == 'joined') {
                 self.rooms[data.room] =
                     new Room(data.room, data.topic, data.guest);
+                self.messageControlsDisabled(false);
+                
+                if(!self.activeRoom) {
+                    self.activeRoom = data.room;
+                    var list = uki('#helping>List');
+                    $.each(list.data(), function(i, el) {
+                        if(el.room == data.room) {
+                            list.selectedIndex(i);
+                            return false;
+                        }
+                    });
+                }
             }
         });
     },
@@ -460,13 +501,10 @@ $.extend(AgentChat.prototype, {
     },
 
     message: function(data) {
-        $('#messages>ul').append(
-            $('<li>').append(
-                $('<span>').html(data.user)
-            ).append(
-                $('<p>').html(data.message)
-            )
-        );
+        if(data.room in this.rooms)
+            this.rooms[data.room].addMessage(data.user,
+                                             data.body,
+                                             data.user == USERNAME);
     },
 
     notification: function(data) {
@@ -489,10 +527,17 @@ $.extend(AgentChat.prototype, {
     end: function(data) {
         if(data.room in this.rooms)
             this.rooms[data.room].addMessage('This room has been terminated due to inactivity.');
+    },
+    
+    messageControlsDisabled: function(state) {
+        uki('#send').disabled(state);
+        uki('#body').disabled(state);
+        $(uki('#body')[0].dom()).find('input')
+                                .attr('disabled', state ? 'disabled' : '');
     }
 });
 
 var chat;
 $(function() {
-    chat = new AgentChat('');
+    chat = new AgentChat(USERNAME);
 });

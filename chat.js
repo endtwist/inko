@@ -383,6 +383,7 @@ exports.Room = new Class({
         while(to = recips.shift())
             to.notify(message.toString());
 
+        message.user.respond({type: 'success', success: 'message sent'});
         this.touch();
     },
 
