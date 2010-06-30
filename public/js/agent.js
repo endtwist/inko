@@ -1,7 +1,22 @@
-uki.view.list.Render = uki.newClass(uki.view.list.Render, {
+var inko = {view: {}};
+
+inko.view.list = uki.view.declare('inko.view.List', uki.view.List, function(Base) {
+    this._setup = function() {
+        Base._setup.call(this);
+        uki.extend(this, {
+            _render: new inko.view.list.Render()
+        });
+    };
+});
+
+inko.view.list.Render = uki.newClass(uki.view.list.Render, {
     render: function(data, rect, i) {
+        console.log(data);
         data = data['text'] ? data['text'] : data;
-        return '<div style="line-height: ' + rect.height + 'px; font-size: 12px; padding: 0 4px;">' + data + '</div>';
+        return '<div style="line-height: ' + rect.height + 'px; font-size: 12px; padding: 0 4px;">' +
+               data +
+               ' (<a href="#" class="close">close</a>)' +
+               '</div>';
     }
 });
 
@@ -71,9 +86,12 @@ uki(
                       anchors: 'top left right bottom', html: 'Active Conversations' }
                 ]
               },
-              { view: 'ScrollableList', rect: '0 30 150 800',
+              { view: 'ScrollPane', rect: '0 30 150 770',
                 anchors: 'top left right bottom', id: 'helping',
-                data: []
+                childViews: [
+                    { view: 'inko.view.List', rect: '150 770',
+                      anchors: 'top left right bottom', data: [] }
+                ]
               }
           ]
         }
@@ -198,6 +216,8 @@ var Guest = function(username, queued) {
         user_data[2].children.push({
             data: username
         });
+
+        users.data(user_data);
     };
 
     this.dequeue = function() {
@@ -229,18 +249,18 @@ var Room = function(name, topic, guest) {
         if(guest && guest['username']) {
             this._private = true;
             this.guest = guest;
-            
+
             var list = uki('#helping>List');
             list.data($.merge(list.data(), [{
                 room: this.name,
                 text: guest.username
             }]));
-            
+
             var roomView = $.extend(true, {}, chatView);
             roomView.id = 'room-' + this.name;
             this.roomView = uki(roomView)
                             .attachTo($('#chatArea')[0], '700 750');
-            
+
             var messageListContainer = $(this.roomView.childViews()[1].dom())
                                        .find('div').css('overflow-y', 'scroll');
             this.messageList = $('<ol class="message-list">')
@@ -251,6 +271,10 @@ var Room = function(name, topic, guest) {
     this.show = function() {
         uki('#chatArea>Box').visible(false);
         this.roomView.visible(true);
+    };
+
+    this.destroy = function() {
+        uki('#chatArea').removeChild(this.roomView);
     };
 
     this.join = function(username) {
@@ -266,7 +290,7 @@ var Room = function(name, topic, guest) {
         console.log(username + ' left room ' + this.name);
         // notify...
     };
-    
+
     this.addMessage = function(username, message, you) {
         var msg;
         if(arguments.length == 1)
@@ -275,10 +299,10 @@ var Room = function(name, topic, guest) {
             msg = $('<li class="' +
                     (you ? 'message-you' : 'message-them') +
                     '">').html(message);
-        
+
         this.messageList.append(msg);
     };
-    
+
     this.constructor();
 };
 
@@ -287,7 +311,7 @@ var AgentChat = function(agent) {
     var self = this;
 
     $('#assist-guest').click(function() { self.assist(); });
-    
+
     uki('#helping>List').bind('keydown mousedown', function(e) {
         var listdata = this.data();
         if(!listdata[this.selectedIndex()] && self.activeRoom) {
@@ -298,11 +322,29 @@ var AgentChat = function(agent) {
                     return false;
                 }
             });
-        } else {        
+        } else {
             var item = listdata[this.selectedIndex()];
             self.rooms[item.room].show();
             self.activeRoom = item.room;
         }
+    });
+
+    $(uki('#helping>List').dom()).find('.close').live('click', function(e) {
+        var list = uki('#helping>List'),
+            listdata = list.data(),
+            index = list.selectedIndex(),
+            room = listdata[list.selectedIndex()].room;
+
+        $.getJSON('/end/' + room);
+
+        list.removeRow(index);
+        if(listdata[index+1]) list.selectedIndex(index);
+        else if(listdata[index-1]) list.selectIndex(index-1);
+
+        self.rooms[room].destroy();
+        delete self.rooms[room];
+
+        return false;
     });
 
     this.agent = agent;
@@ -369,7 +411,7 @@ $.extend(AgentChat.prototype, {
     assist: function() {
         // Should check if Agent is available
         // and if there are any queued guests...
-        
+
         var self = this;
         $.getJSON('/assist', function(data) {
             if(data.type == 'joined') {
@@ -426,7 +468,7 @@ $.extend(AgentChat.prototype, {
             )
         );
     },
-    
+
     notification: function(data) {
         switch(data.details) {
             case 'joined': this.join(data); break;

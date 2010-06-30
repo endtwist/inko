@@ -26,6 +26,7 @@ configure(function() {
     use(Session.Djangofied, {lifetime: (15).minutes,
                              reapInterval: (1).minute,
                              dataStore: Store.MemoryExtended});
+    disable('show exceptions');
     set('root', __dirname);
 });
 

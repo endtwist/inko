@@ -145,7 +145,7 @@ exports.manager = new (new Class({
     destroyRoom: function(user, room) {
         if(room in this.rooms) {
             if(-~this.rooms[room].users.indexOf(user)) {
-                this.rooms[room].close();
+                this.rooms[room].end();
                 delete this.rooms[room];
              } else {
                 user.respond({type: 'error', error: 'no permissions'});
