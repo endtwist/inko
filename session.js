@@ -93,6 +93,22 @@ var SessionBase = Base.extend({
             return this[data];
         else
             return false;
+    },
+    
+    hasPerm: function(permission) {
+        return (this.perms ? !!-~this.perms.indexOf(permission) : false);
+    },
+    
+    hasPermIn: function(possible_perms) {
+        return possible_perms.some(function(perm) {
+                   return this.hasPerm(perm);
+               }, this);
+    },
+    
+    hasAllPermsIn: function(perm_list) {
+        return perm_list.every(function(perm) {
+                   return this.hasPerm(perm);
+               }, this);
     }
 });
 
@@ -197,8 +213,8 @@ Store.MemoryExtended = Store.Memory.extend({
             function(user_id) {
                 if(!user_id) {
                     callback(null, new Guest(sid, this), true);
-                } else if(-~this.perms.indexOf(AGENT_PERM) ||
-                          -~this.perms.indexOf(MONITOR_PERM)) {
+                } else if(-~this.perms.indexOf('agent_live_chat') ||
+                          -~this.perms.indexOf('monitor_live_chat')) {
                     callback(null,
                              new Agent(sid, {
                                 maxGuests: AGENT_MAX_GUESTS,

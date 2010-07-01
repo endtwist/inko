@@ -42,14 +42,17 @@ exports.DjangoSession = new Class({
                     db.query(sprintf('SELECT ap.codename \
                                       FROM `auth_user_groups` AS aug, \
                                       `auth_group_permissions` AS agp, \
+                                      `auth_user_user_permissions` AS auup, \
                                       `auth_permission` AS ap \
-                                      WHERE aug.user_id = %d \
-                                      AND ap.codename IN (\'%s\', \'%s\') \
-                                      AND agp.permission_id = ap.id \
-                                      AND aug.group_id = agp.group_id',
+                                      WHERE \
+                                      (aug.user_id = %d \
+                                       AND aug.group_id = agp.group_id \
+                                       AND agp.permission_id = ap.id) OR \
+                                      (auup.user_id = %d \
+                                       AND auup.permission_id = ap.id) \
+                                      GROUP BY ap.id',
                                       parseInt(self.user_id),
-                                      MONITOR_PERM,
-                                      AGENT_PERM));
+                                      parseInt(self.user_id)));
                     db.addListener('result', function(result) {
                         db.removeListener('result', arguments.callee);
                         self.perms = [];

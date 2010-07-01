@@ -133,7 +133,7 @@ exports.manager = new (new Class({
     },
 
     initRoom: function(user, room) {
-        if(!~user.get('perms').indexOf(MONITOR_PERM)) {
+        if(!user.hasPerm('monitor_live_chat')) {
             //user.respond(403, {type: 'error', error: 'no permissions'});
             //return;
         }
@@ -312,7 +312,7 @@ exports.Room = new Class({
     join: function(user, primary_users) {
         if(!primary_users &&
            this._private &&
-           !~user.get('perms').indexOf(MONITOR_PERM)) {
+           !user.hasPerm('monitor_live_chat')) {
             user.respond({type: 'error', error: 'no permissions'});
             return;
         }

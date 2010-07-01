@@ -365,7 +365,7 @@ var AgentChat = function(agent) {
     
     var sendAction = function(e) {
         if(!self.activeRoom)
-            self.messageControlsDisabled(true);
+            return self.messageControlsDisabled(true);
         
         self.rooms[self.activeRoom].send(uki('#body').value());
         uki('#body').value('');
