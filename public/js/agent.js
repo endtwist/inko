@@ -292,7 +292,7 @@ var Room = function(name, topic, guest) {
         console.log(username + ' left room ' + this.name);
         // notify...
     };
-    
+
     this.send = function(message) {
         $.post('/message', {id: this.name, body: message});
     };
@@ -362,11 +362,11 @@ var AgentChat = function(agent) {
 
         return false;
     });
-    
+
     var sendAction = function(e) {
         if(!self.activeRoom)
             return self.messageControlsDisabled(true);
-        
+
         self.rooms[self.activeRoom].send(uki('#body').value());
         uki('#body').value('');
     };
@@ -447,7 +447,7 @@ $.extend(AgentChat.prototype, {
                 self.rooms[data.room] =
                     new Room(data.room, data.topic, data.guest);
                 self.messageControlsDisabled(false);
-                
+
                 if(!self.activeRoom) {
                     self.activeRoom = data.room;
                     var list = uki('#helping>List');
@@ -528,7 +528,7 @@ $.extend(AgentChat.prototype, {
         if(data.room in this.rooms)
             this.rooms[data.room].addMessage('This room has been terminated due to inactivity.');
     },
-    
+
     messageControlsDisabled: function(state) {
         uki('#send').disabled(state);
         uki('#body').disabled(state);

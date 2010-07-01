@@ -11,10 +11,10 @@ var SessionBase = Base.extend({
         this.listeners = [];
         this.message_queue = [];
         this.csrf_token = '';
-        
+
         setInterval(this._expireConns.bind(this), 500);
     },
-    
+
     _expireConns: function() {
         var conn;
         for(var i = 0; i < this.listeners.length; i++) {
@@ -34,7 +34,7 @@ var SessionBase = Base.extend({
     listener: function(conn) {
         this._req('listeners', conn);
     },
-    
+
     _req: function($conn, req) {
         this[$conn].push(req);
 
@@ -94,17 +94,17 @@ var SessionBase = Base.extend({
         else
             return false;
     },
-    
+
     hasPerm: function(permission) {
-        return (this.perms ? !!-~this.perms.indexOf(permission) : false);
+        return (this.perms ? !!~this.perms.indexOf(permission) : false);
     },
-    
+
     hasPermIn: function(possible_perms) {
         return possible_perms.some(function(perm) {
                    return this.hasPerm(perm);
                }, this);
     },
-    
+
     hasAllPermsIn: function(perm_list) {
         return perm_list.every(function(perm) {
                    return this.hasPerm(perm);
@@ -206,6 +206,10 @@ Store.MemoryExtended = Store.Memory.extend({
             });
         }
     },
+    
+    get: function(sid) {
+        return (sid && this.store[sid] ? this.store[sid] : false);
+    },
 
     generate: function(sid, callback) {
         new models.DjangoSession(
@@ -213,8 +217,8 @@ Store.MemoryExtended = Store.Memory.extend({
             function(user_id) {
                 if(!user_id) {
                     callback(null, new Guest(sid, this), true);
-                } else if(-~this.perms.indexOf('agent_live_chat') ||
-                          -~this.perms.indexOf('monitor_live_chat')) {
+                } else if(~this.perms.indexOf('agent_live_chat') ||
+                          ~this.perms.indexOf('monitor_live_chat')) {
                     callback(null,
                              new Agent(sid, {
                                 maxGuests: AGENT_MAX_GUESTS,
@@ -227,6 +231,11 @@ Store.MemoryExtended = Store.Memory.extend({
                              }), true);
                 }
             });
+    },
+
+    generateGuest: function(sid, callback) {
+        callback(null,
+                 new Guest(sid, {data: []}), true);
     }
 });
 
@@ -251,44 +260,82 @@ Session.Djangofied = Plugin.extend({
 
     on: {
         request: function(event, callback, fresh) {
-            var sid = event.request.cookie('sessionid');
-            if(-~event.request.url.pathname.indexOf('/public/') ||
+            var sid = event.request.cookie('sessionid'),
+                guest_sid = event.request.cookie('guest_sessionid');
+
+            if(~event.request.url.pathname.indexOf('/public/') ||
                 event.request.url.pathname === '/favicon.ico')
                 return;
+
+            var setupSession = function(err, session, fresh) {
+                if(err) return callback(err);
+
+                var csrftok = event.request.cookie('_csrf') ||
+                              event.request.param('_csrf');
+
+                if(!fresh && session.csrf_token != csrftok) {
+                    event.request.respond(400, JSON.encode({
+                                                    type: 'error',
+                                                    error: 'bad request'
+                                                }));
+                    return;
+                } else if(fresh) {
+                    var csrftok = utils.uid();
+                    event.request.cookie('_csrf', csrftok, {
+                        expires: Date.now() + (30).days
+                    });
+                    session.csrf_token = csrftok;
+                }
+
+                event.request.session = session;
+                event.request.session.touch();
+                
+                event.request.has = function(keys, eq) {
+                    if(!(keys instanceof Array)) keys = [keys];
+                    
+                    if(!keys.every(function(k) { 
+                        var v = event.request.session.get(k);
+                        return (eq ? v === eq : v.length);
+                    })) {
+                        event.request.session.respond({
+                            type: 'error',
+                            error: 'not authenticated'
+                        });
+                        
+                        return false;
+                    }
+                    
+                    return true;
+                };
+
+                if(event.request.url.pathname === '/listen') {
+                    event.request.session.listener(event.request);
+                    event.request.connection.setTimeout((5).minutes);
+                } else
+                    event.request.session.connection(event.request);
+
+                callback();
+            };
+
             if(sid) {
-                Session.Djangofied.store.fetch(sid, function(err, session, fresh) {
-                    if(err) return callback(err);
-
-                    var csrftok = event.request.cookie('_csrf') ||
-                                  event.request.param('_csrf');
-
-                    if(!fresh && session.csrf_token != csrftok) {
-                        event.request.respond(400, JSON.encode({
-                                                        type: 'error',
-                                                        error: 'bad request'
-                                                    }));
-                        return;
-                    } else if(fresh) {
+                Session.Djangofied.store.fetch(sid, setupSession);
+            } else if(sess = Session.Djangofied.store.get(guest_sid)) {
+                setupSession(false,
+                             Session.Djangofied.store.store[guest_sid]);
+            } else {
+                Session.Djangofied.store.generateGuest(utils.uid(),
+                    function(err, session) {
                         var csrftok = utils.uid();
                         event.request.cookie('_csrf', csrftok, {
                             expires: Date.now() + (30).days
                         });
                         session.csrf_token = csrftok;
-                    }
+                        Session.Djangofied.store.commit(session);
 
-                    event.request.session = session;
-                    event.request.session.touch();
-
-                    if(event.request.url.pathname === '/listen') {
-                        event.request.session.listener(event.request);
-                        event.request.connection.setTimeout((5).minutes);
-                    } else
-                        event.request.session.connection(event.request);
-
-                    callback();
-                });
-            } else {
-                event.request.redirect(LOGIN_URL);
+                        event.request.cookie('guest_sessionid',
+                                             session.id);
+                    });
+                callback();
             }
             return true;
         },

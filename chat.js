@@ -34,6 +34,19 @@ exports.manager = new (new Class({
             function(session) {
                 self.agentUnavailable(session);
             });
+
+        this._sessionHandler = sh;
+    },
+
+    defineGuest: function(session, data) {
+        if(!['username', 'question', 'os', 'version', 'extensions']
+           .every(function(el) { return data[el].length; }))
+           return session.respond({type: 'error', error: 'missing data'});
+
+        session.data = data;
+        this.putGuestInQueue(session);
+
+        session.respond({type: 'success', success: 'identity set'});
     },
 
     putGuestInQueue: function(guest) {
@@ -87,7 +100,7 @@ exports.manager = new (new Class({
 
     agentAvailable: function(agent) {
         this.available_agents.push(agent);
-        if(-~(pos = this.unavailable_agents.indexOf(agent)))
+        if(~(pos = this.unavailable_agents.indexOf(agent)))
             this.unavailable_agents.splice(pos, 1);
         this._sortAgents();
         this.events.emit('message',
@@ -96,7 +109,7 @@ exports.manager = new (new Class({
 
     agentUnavailable: function(agent) {
         this.unavailable_agents.push(agent);
-        if(-~(pos = this.available_agents.indexOf(agent)))
+        if(~(pos = this.available_agents.indexOf(agent)))
             this.available_agents.splice(pos, 1);
         this._sortAgents();
         this.events.emit('message',
@@ -144,7 +157,7 @@ exports.manager = new (new Class({
 
     destroyRoom: function(user, room) {
         if(room in this.rooms) {
-            if(-~this.rooms[room].users.indexOf(user)) {
+            if(~this.rooms[room].users.indexOf(user)) {
                 this.rooms[room].end();
                 delete this.rooms[room];
              } else {
@@ -167,7 +180,7 @@ exports.manager = new (new Class({
             room_obj = function() {
                 var action = arguments[0];
                 var args = Array.prototype.slice.call(arguments, 1);
-                if(-~['join', 'leave'].indexOf(action))
+                if(~['join', 'leave'].indexOf(action))
                     args[0] = user;
                 var room = self.rooms[name];
                 room[action].apply(room, args);
@@ -317,7 +330,7 @@ exports.Room = new Class({
             return;
         }
 
-        if(-~this.users.indexOf(user)) {
+        if(~this.users.indexOf(user)) {
             user.respond({type: 'error', error: 'already in room'});
             return;
         }

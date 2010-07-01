@@ -37,29 +37,47 @@ get('/debug', function() {
 get('/', function() {
     this.render('chat.html.haml', {
         locals: {
-            'title': this.session.get('username') +
-                     ' | ' + this.session.type + ' | Mozilla Live Chat',
-            'js': this.session.type,
-            'username': this.session.get('username')
+            'title': 'Mozilla Live Chat',
+            'js': this.session ? this.session.type : 'guest',
+            'username': this.session ? this.session.get('username') : ''
         }
     });
 });
 
 get('/listen', function() {
+    if(!this.session.get('username'))
+        return this.session.notify({type: 'welcome'});
+
     chat.manager.putGuestInQueue(this.session);
 });
 
+post('/identify', function() {
+    chat.manager.defineGuest(this.session, {
+        username: this.params.post.username || '',
+        question: this.params.post.question || '',
+        os: this.params.post.question || '',
+        version: this.params.post.version || '',
+        extensions: this.params.post.extensions || ''
+    });
+});
+
 get('/guests', function() {
+    if(!this.has('type', 'agent')) return;
+    
     // Return list of queued / not queued guests
     this.session.respond(200, chat.manager.queue, true);
 });
 
 get('/assist', function() {
+    if(!this.has('type', 'agent')) return;
+    
     // Dequeue guest, create new room for users.
     chat.manager.assignNextGuestToThisAgent(this.session);
 })
 
 post('/message', function() {
+    if(!this.has('username')) return;
+    
     chat.manager.with_(this.session, this.param('id'))('send',
         new chat.Message(
             this.session,
@@ -68,6 +86,8 @@ post('/message', function() {
 });
 
 post('/message/:id', function(id) {
+    if(!this.has('username')) return;
+    
     // Send message to room :id
     chat.manager.with_(this.session, id)('send', new chat.Message(
         this.session,
@@ -76,6 +96,8 @@ post('/message/:id', function(id) {
 });
 
 post('/message/:id/typing', function(id) {
+    if(!this.has('username')) return;
+    
     var states = ['off', 'on', 'wait'];
     chat.manager.with_(this.session, id)('send', new chat.Status(
         this.session,
@@ -86,21 +108,25 @@ post('/message/:id/typing', function(id) {
 });
 
 get('/join/:id', function(id) {
+    if(!this.has('username')) return;
     // Join room :id
     chat.manager.with_(this.session, id)('join');
 });
 
 get('/leave/:id', function(id) {
+    if(!this.has('username')) return;
     // Leave room :id
     chat.manager.with_(this.session, id)('leave');
 });
 
 get('/end/:id', function(id) {
+    if(!this.has('username')) return;
     // Destroy room :id
     chat.manager.destroyRoom(this.session, id);
 });
 
 get('/create/:name', function(name) {
+    if(!this.has('type', 'agent')) return;
     // Create room :name
     chat.manager.initRoom(this.session, name);
 });

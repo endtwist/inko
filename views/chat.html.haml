@@ -1,3 +1,21 @@
 
 != '<script type="text/javascript">var USERNAME = "' + username + '";</script>'
 %script{type: 'text/javascript', src: '/public/js/' + js + '.js'}
+
+%form{method: "post", action: "/identify"}
+  #username-field
+    = 'Username'
+    %input#username{type: "text", name: "username"}
+  #question-field
+    = 'Question'
+    %input#question{type: "text", name: "question"}
+  #os-field
+    = 'OS'
+    %input#os{type: "text", name: "os"}
+  #version-field
+    = 'Firefox Version'
+    %input#version{type: "text", name: "version"}
+  #extensions-field
+    = 'Extensions'
+    %input#extensions{type: "text", name: "extensions"}
+  %input#submit{type: "submit", value: "Help!"}
