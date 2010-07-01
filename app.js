@@ -30,11 +30,11 @@ configure(function() {
     set('root', __dirname);
 });
 
-get('/', function() {
+get('/debug', function() {
     this.session.respond(200, sys.inspect(this.session), true);
 });
 
-get('/c', function() {
+get('/', function() {
     this.render('chat.html.haml', {
         locals: {
             'title': this.session.get('username') +
