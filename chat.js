@@ -34,9 +34,13 @@ exports.manager = new (new Class({
             function(session) {
                 self.agentUnavailable(session);
             });
+            
+        sh.events.addListener('available',
+            function(session) {
+                self.agentAvailable(session);
+            });
 
         sh.events.addListener('signedOff', function(session) {
-            sys.puts('reaped!');
             if(session.type == 'agent') {
                 (pos = self.available_agents.indexOf(session) &&
                        self.available_agents.splice(pos, 1)) ||

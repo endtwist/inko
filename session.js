@@ -144,6 +144,9 @@ var Agent = SessionBase.extend({
         // Unassign a 'Guest' from this 'Agent'
         var pos = this.guests.indexOf(guest);
         this.guests.splice(pos, 1);
+        
+        if(this.available)
+            Session.Djangofied.events.emit('available', this);
     },
 
     get available() {
