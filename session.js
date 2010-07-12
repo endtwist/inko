@@ -236,6 +236,18 @@ Store.MemoryExtended = Store.Memory.extend({
     generateGuest: function(sid, callback) {
         callback(null,
                  new Guest(sid, {data: []}), true);
+    },
+    
+    reap: function(ms) {
+        var threshold = +new Date(Date.now() - ms),
+            sids = Object.keys(this.store);
+        for(var i = 0, len = sids.length; i < len; ++i) {
+            if(this.store[sids[i]].lastAccess < threshold) {
+                Session.Djangofied.events.emit('signedOff',
+                                               this.store[sids[i]]);
+                this.destroy(sids[i]);
+            }
+        }
     }
 });
 
@@ -334,6 +346,7 @@ Session.Djangofied = Plugin.extend({
 
                         event.request.cookie('guest_sessionid',
                                              session.id);
+                        event.request.session = session;
                     });
                 callback();
             }

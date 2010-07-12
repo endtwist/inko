@@ -35,6 +35,25 @@ exports.manager = new (new Class({
                 self.agentUnavailable(session);
             });
 
+        sh.events.addListener('signedOff', function(session) {
+            sys.puts('reaped!');
+            if(session.type == 'agent') {
+                (pos = self.available_agents.indexOf(session) &&
+                       self.available_agents.splice(pos, 1)) ||
+                (pos = self.unavailable_agents.indexOf(session) &&
+                       self.unavailable_agents.splice(pos, 1));
+            } else {
+                (pos = self.guests.indexOf(session) &&
+                       self.guests.splice(pos, 1));
+            }
+            
+            self.events.emit('message', new exports.Status(
+                session,
+                'availability',
+                'offline'
+            ));
+        });
+
         this._sessionHandler = sh;
     },
 
