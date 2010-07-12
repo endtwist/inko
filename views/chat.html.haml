@@ -1,6 +1,16 @@
 
-!= '<script type="text/javascript">var USERNAME = "' + username + '";</script>'
-%script{type: 'text/javascript', src: '/public/js/' + js + '.js'}
+%script{type: 'text/javascript'}
+  != 'var USERNAME = "' + username + '";'
+
+%script{type: 'text/javascript', src: '/public/js/client.js'}
+
+- if (agent)
+  %script{type: 'text/javascript'}
+    $(function() { chat = new AgentChat(USERNAME); });
+
+- if (!agent && username)
+  %script{type: 'text/javascript'}
+    $(function() { chat = new GuestChat(USERNAME); });
 
 %form{method: "post", action: "/identify"}
   #username-field

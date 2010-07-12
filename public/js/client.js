@@ -20,84 +20,6 @@ inko.view.list.Render = uki.newClass(uki.view.list.Render, {
     }
 });
 
-uki(
-{ view: 'HSplitPane', rect: '1000 800', anchors: 'left top right bottom',
-    handlePosition: 150, leftMin: 150, rightMin: 500, handleWidth: 1,
-    background: '#EDF3FE',
-    leftChildViews: [
-        { view: 'Box', rect: '150 30', anchors: 'top left right',
-          background: 'theme(panel)',
-          childViews: [
-              { view: 'Label', rect: '10 0 150 30',
-                anchors: 'top left right bottom', html: 'Users' }
-          ]
-        },
-        { view: 'ScrollPane', rect: '0 30 150 720',
-          anchors: 'top left right bottom',
-          background: 'cssBox(border-bottom:1px solid #999;)',
-          childViews: [
-              { view: 'uki.more.view.TreeList', rect: '150 720',
-                anchors: 'top left right bottom', rowHeight: 22,
-                style: {fontSize: '12px'}, id: 'users',
-                data: [
-                    {type: 'available', data: 'Available Agents', children: []},
-                    {type: 'unavailable', data: 'Unavailable Agents', children: []},
-                    {type: 'guests_q', data: 'Queued Guests', children: []}
-                ] }
-          ]
-        },
-        { view: 'Box', rect: '0 750 150 50', anchors: 'bottom left right',
-          background: 'theme(panel)',
-          childViews: [
-                { view: 'Button', rect: '10 10 130 30',
-                  anchors: 'top left right bottom',
-                  text: 'Assist Guest', id: 'assist-guest'
-                }
-          ]
-        },
-    ],
-    rightChildViews: [
-        { view: 'HSplitPane', rect: '850 800',
-          anchors: 'left top right bottom', handleWidth: 1,
-          handlePosition: 700, leftMin: 250, rightMin: 150,
-          leftChildViews: [
-                { view: 'Box', rect: '700 750', anchors: 'top left right bottom',
-                  id: 'chatArea'
-                },
-                { view: 'Box', rect: '0 750 700 50',
-                  background: 'theme(panel)',
-                  anchors: 'left right bottom', childViews: [
-                    { view: 'TextField', rect: '10 10 590 30',
-                      style: {fontSize: '14px'},
-                      anchors: 'top left right bottom', name: 'body', id: 'body'
-                    },
-                    { view: 'Button', rect: '610 10 80 30', text: 'Send',
-                      anchors: 'top right', id: 'send'
-                    }
-                  ]
-                }
-          ],
-          rightChildViews: [
-              { view: 'Box', rect: '150 30',
-                anchors: 'top left right',
-                background: 'theme(panel)',
-                childViews: [
-                    { view: 'Label', rect: '10 0 150 30',
-                      anchors: 'top left right bottom', html: 'Active Conversations' }
-                ]
-              },
-              { view: 'ScrollPane', rect: '0 30 150 770',
-                anchors: 'top left right bottom', id: 'helping',
-                childViews: [
-                    { view: 'inko.view.List', rect: '150 770',
-                      anchors: 'top left right bottom', data: [] }
-                ]
-              }
-          ]
-        }
-   ]
-}).attachTo(window, '1000 800', {minSize: '300 0'});
-
 function chatView() {
     return { view: 'Box', rect: '700 750', anchors: 'top left right bottom',
              childViews: [
@@ -115,6 +37,10 @@ function chatView() {
            };
 }
 
+/* Agent object
+ *
+ * Used by the Agent view.
+ */
 var Agent = function(username) {
     var self = this;
 
@@ -205,6 +131,10 @@ var Agent = function(username) {
     this.constructor();
 };
 
+/* Guest object
+ *
+ * Used by the Agent view.
+ */
 var Guest = function(username, queued) {
     var self = this;
 
@@ -239,6 +169,10 @@ var Guest = function(username, queued) {
     this.constructor();
 };
 
+/* Room object
+ *
+ * Used by the Agent view.
+ */
 var Room = function(name, topic, guest) {
     var self = this;
 
@@ -312,9 +246,91 @@ var Room = function(name, topic, guest) {
     this.constructor();
 };
 
+/* Agent Chat View
+ *
+ * Allow Agents to manage and chat with guests and other agents.
+ */
 var AgentChat = function(agent) {
     $.ajaxSetup({cache: false});
     var self = this;
+    
+    uki(
+    { view: 'HSplitPane', rect: '1000 800', anchors: 'left top right bottom',
+        handlePosition: 150, leftMin: 150, rightMin: 500, handleWidth: 1,
+        background: '#EDF3FE',
+        leftChildViews: [
+            { view: 'Box', rect: '150 30', anchors: 'top left right',
+              background: 'theme(panel)',
+              childViews: [
+                  { view: 'Label', rect: '10 0 150 30',
+                    anchors: 'top left right bottom', html: 'Users' }
+              ]
+            },
+            { view: 'ScrollPane', rect: '0 30 150 720',
+              anchors: 'top left right bottom',
+              background: 'cssBox(border-bottom:1px solid #999;)',
+              childViews: [
+                  { view: 'uki.more.view.TreeList', rect: '150 720',
+                    anchors: 'top left right bottom', rowHeight: 22,
+                    style: {fontSize: '12px'}, id: 'users',
+                    data: [
+                        {type: 'available', data: 'Available Agents', children: []},
+                        {type: 'unavailable', data: 'Unavailable Agents', children: []},
+                        {type: 'guests_q', data: 'Queued Guests', children: []}
+                    ] }
+              ]
+            },
+            { view: 'Box', rect: '0 750 150 50', anchors: 'bottom left right',
+              background: 'theme(panel)',
+              childViews: [
+                    { view: 'Button', rect: '10 10 130 30',
+                      anchors: 'top left right bottom',
+                      text: 'Assist Guest', id: 'assist-guest'
+                    }
+              ]
+            },
+        ],
+        rightChildViews: [
+            { view: 'HSplitPane', rect: '850 800',
+              anchors: 'left top right bottom', handleWidth: 1,
+              handlePosition: 700, leftMin: 250, rightMin: 150,
+              leftChildViews: [
+                    { view: 'Box', rect: '700 750', anchors: 'top left right bottom',
+                      id: 'chatArea'
+                    },
+                    { view: 'Box', rect: '0 750 700 50',
+                      background: 'theme(panel)',
+                      anchors: 'left right bottom', childViews: [
+                        { view: 'TextField', rect: '10 10 590 30',
+                          style: {fontSize: '14px'},
+                          anchors: 'top left right bottom', name: 'body', id: 'body'
+                        },
+                        { view: 'Button', rect: '610 10 80 30', text: 'Send',
+                          anchors: 'top right', id: 'send'
+                        }
+                      ]
+                    }
+              ],
+              rightChildViews: [
+                  { view: 'Box', rect: '150 30',
+                    anchors: 'top left right',
+                    background: 'theme(panel)',
+                    childViews: [
+                        { view: 'Label', rect: '10 0 150 30',
+                          anchors: 'top left right bottom', html: 'Active Conversations' }
+                    ]
+                  },
+                  { view: 'ScrollPane', rect: '0 30 150 770',
+                    anchors: 'top left right bottom', id: 'helping',
+                    childViews: [
+                        { view: 'inko.view.List', rect: '150 770',
+                          anchors: 'top left right bottom', data: [] }
+                    ]
+                  }
+              ]
+            }
+       ]
+    }).attachTo(window, '1000 800', {minSize: '300 0'});
 
     $('#assist-guest').click(function() { self.assist(); });
 
@@ -328,7 +344,7 @@ var AgentChat = function(agent) {
                     return false;
                 }
             });
-        } else {
+        } else if(listdata[this.selectedIndex()]) {
             var item = listdata[this.selectedIndex()];
             self.rooms[item.room].show();
             self.activeRoom = item.room;
@@ -526,7 +542,7 @@ $.extend(AgentChat.prototype, {
 
     end: function(data) {
         if(data.room in this.rooms)
-            this.rooms[data.room].addMessage('This room has been terminated due to inactivity.');
+            this.rooms[data.room].addMessage('This room has been terminated.');
     },
 
     messageControlsDisabled: function(state) {
@@ -537,7 +553,128 @@ $.extend(AgentChat.prototype, {
     }
 });
 
-var chat;
-$(function() {
-    chat = new AgentChat(USERNAME);
+/* Guest Chat View
+ *
+ * Guests are queued and can chat with a single agent.
+ */
+var GuestChat = function(guest) {
+    $.ajaxSetup({cache: false});
+    var self = this;
+    
+    uki(
+    { view: 'Box', rect: '1000 800', anchors: 'left top right bottom',
+      background: '#EDF3FE', childViews: [
+        { view: 'Box', rect: '1000 750', id: 'messages',
+          anchors: 'top left right bottom',
+          background: 'cssBox(background:#fff;)',
+          textSelectable: true
+        },
+        { view: 'Box', rect: '0 750 1000 50',
+          background: 'theme(panel)',
+          anchors: 'left right bottom', childViews: [
+            { view: 'TextField', rect: '10 10 890 30',
+              style: {fontSize: '14px'},
+              anchors: 'top left right bottom', name: 'body', id: 'body'
+            },
+            { view: 'Button', rect: '910 10 80 30', text: 'Send',
+              anchors: 'top right', id: 'send'
+            }
+          ]
+        }
+      ]
+    }).attachTo(window, '1000 800', {minSize: '300 0'});
+    
+    var messageListContainer = $(uki('#messages').dom())
+                               .find('div').css('overflow-y', 'scroll');
+    this.messageList = $('<ol class="message-list">')
+                       .appendTo(messageListContainer);
+    
+    this.room = null;
+    this.actions = {
+        'message': this.message,
+        'notification': this.notification,
+        'joined': this.join,
+        'left': this.leave,
+        'end': this.end
+    };
+    
+    var sendAction = function(e) {
+        if(!self.room)
+            return self.messageControlsDisabled(true);
+
+        self.send(uki('#body').value());
+        uki('#body').value('');
+    };
+    uki('#send').bind('click', sendAction);
+    uki('#body').bind('keyup', function(e) {
+        (e.domEvent.which == 13 && sendAction.call(this));
+    });
+    
+    this.messageControlsDisabled(true);
+    this.listen();
+    this.addMessage('Please wait for the next available agent.');
+};
+
+$.extend(GuestChat.prototype, {
+    listen: function() {
+        var self = this;
+        $.getJSON('/listen', function(data) {
+            console.log(JSON.stringify(data));
+
+            if(data.type in self.actions)
+                self.actions[data.type].call(self, data);
+
+            setTimeout(function() { self.listen(); }, 0);
+        });
+    },
+    
+    messageControlsDisabled: function(state) {
+        uki('#send').disabled(state);
+        uki('#body').disabled(state);
+        $(uki('#body')[0].dom()).find('input')
+                                .attr('disabled', state ? 'disabled' : '');
+    },
+
+    addMessage: function(username, message, you) {
+        var msg;
+        if(arguments.length == 1)
+            msg = $('<li class="message-server">').html(username);
+        else
+            msg = $('<li class="' +
+                    (you ? 'message-you' : 'message-them') +
+                    '">').html('<span>' + username + ':</span> ' + message);
+
+        this.messageList.append(msg);
+    },
+    
+    send: function(message) {
+        if(!this.room) return;
+        $.post('/message', {id: this.room, body: message});
+    },
+    
+    message: function(data) {
+        this.addMessage(data.user, data.body, data.user == USERNAME);
+    },
+
+    notification: function(data) {
+
+    },
+    
+    join: function(data) {
+        this.room = data.room;
+        this.addMessage('You are now being assisted by ' + (data.user || '?'));
+        this.messageControlsDisabled(false);
+    },
+    
+    leave: function() {
+
+    },
+    
+    end: function() {
+        this.room = null;
+        this.addMessage('This chat has been terminated.');
+        this.messageControlsDisabled(true);
+    }
 });
+
+var chat;

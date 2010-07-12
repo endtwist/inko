@@ -39,7 +39,8 @@ get('/', function() {
         locals: {
             'title': 'Mozilla Live Chat',
             'js': this.session ? this.session.type : 'guest',
-            'username': this.session ? this.session.get('username') : ''
+            'username': this.session ? this.session.get('username') : '',
+            'agent': this.session && (this.session.type == 'agent')
         }
     });
 });
