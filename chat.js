@@ -8,6 +8,8 @@ exports.manager = new (new Class({
         this.available_agents = [];
         this.unavailable_agents = [];
         this.guests = [];
+        this.wait_times = [];
+        this.last_dequeue = Date.now();
         this.events = new events.EventEmitter();
 
         this.grim_reaper = setInterval(this.reaper.bind(this), (5).seconds);
@@ -150,9 +152,17 @@ exports.manager = new (new Class({
     },
 
     dequeueGuest: function() {
-        var guest = this.guests.shift();
+        var guest = this.guests.shift(),
+            self = this;
         this.events.emit('message',
                          new exports.Update([guest], 'dequeued'));
+        this.guests.each(function(g, i) {
+            self.wait_times.push(
+                Math.floor((Date.now() - self.last_dequeue) / 1000));
+            self.wait_times = self.wait_times.slice(-5);
+            self.last_dequeue = Date.now();
+            g.notify({type: 'qpos', position: i, wait: self.wait_times.avg});
+        });
         return guest;
     },
 

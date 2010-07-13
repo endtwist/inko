@@ -494,6 +494,8 @@ $.extend(AgentChat.prototype, {
                     if(!(user in this.guests)) {
                         this.guests[user] =
                             new Guest(user, true);
+                    } else {
+                        this.guests[user].constructor();
                     }
                 break;
 
@@ -594,7 +596,8 @@ var GuestChat = function(guest) {
         'notification': this.notification,
         'joined': this.join,
         'left': this.leave,
-        'end': this.end
+        'end': this.end,
+        'qpos': this.queuePosition
     };
     
     var sendAction = function(e) {
@@ -673,6 +676,12 @@ $.extend(GuestChat.prototype, {
         this.room = null;
         this.addMessage('This chat has been terminated.');
         this.messageControlsDisabled(true);
+    },
+    
+    queuePosition: function(data) {
+        this.addMessage('You are now number ' + data.position + ' in the queue; ' +
+                        'Wait time is approximately ' + Math.floor(data.wait / 60) +
+                        ' minutes.');
     }
 });
 
