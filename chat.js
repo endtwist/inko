@@ -22,11 +22,6 @@ exports.manager = new (new Class({
                 });
 
                 self.agentAvailable(session);
-
-                session.notify(JSON.stringify({
-                    type: 'signon',
-                    users: self.userList()
-                }));
             }
         });
 
@@ -366,7 +361,6 @@ exports.Room = new Class({
             join_msg.guest = this.guest.data;
             user.respond(join_msg);
         } else if(this._private) {
-            sys.puts(sys.inspect(this.users[0]));
             join_msg.agent = this.users[0].get('username');
             user.notify(join_msg);
         }

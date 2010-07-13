@@ -66,7 +66,7 @@ get('/guests', function() {
     if(!this.has('type', 'agent')) return;
     
     // Return list of queued / not queued guests
-    this.session.respond(200, chat.manager.queue, true);
+    this.session.respond(chat.manager.queue);
 });
 
 get('/assist', function() {
@@ -75,6 +75,13 @@ get('/assist', function() {
     // Dequeue guest, create new room for users.
     chat.manager.assignNextGuestToThisAgent(this.session);
 })
+
+get('/list', function() {
+    if(!this.has('type', 'agent')) return;
+    
+    // Return a list of users and their statuses
+    this.session.respond(chat.manager.userList());
+});
 
 post('/message', function() {
     if(!this.has('username')) return;

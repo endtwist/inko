@@ -393,7 +393,6 @@ var AgentChat = function(agent) {
 
     this.agent = agent;
     this.actions = {
-        'signon': this.initialize,
         'update': this.update,
         'message': this.message,
         'notification': this.notification,
@@ -409,6 +408,8 @@ var AgentChat = function(agent) {
     this.activeRoom = null;
 
     this.messageControlsDisabled(true);
+
+    this.list();
     this.listen();
 };
 
@@ -416,8 +417,6 @@ $.extend(AgentChat.prototype, {
     listen: function() {
         var self = this;
         $.getJSON('/listen', function(data) {
-            console.log(JSON.stringify(data));
-
             if(data.type in self.actions)
                 self.actions[data.type].call(self, data);
 
@@ -425,31 +424,31 @@ $.extend(AgentChat.prototype, {
         });
     },
 
-    initialize: function(data) {
-        var users = data.users,
-            self = this;
-
-        $.each(users.available_agents, function(i, agent) {
-            if(!(agent in self.agents)) {
-                self.agents[agent] = new Agent(agent);
-                self.agents[agent].availability('available');
-            }
-        });
-
-        $.each(users.unavailable_agents, function(i, agent) {
-            if(!(agent in self.agents)) {
-                self.agents[agent] = new Agent(agent);
-                self.agents[agent].availability('unavailable');
-            }
-        });
-
-        $.each(users.guests, function(i, guest) {
-            if(!(guest[0] in self.guests)) {
-                self.guests[guest[0]] = new Guest(guest[0], !!guest[1]);
-                if(!!guest[1]) {
-                    self.agents[guest[1]].assign(self.guests[guest[0]]);
+    list: function() {
+        var self = this;
+        $.getJSON('/list', function(users) {
+            $.each(users.available_agents, function(i, agent) {
+                if(!(agent in self.agents)) {
+                    self.agents[agent] = new Agent(agent);
+                    self.agents[agent].availability('available');
                 }
-            }
+            });
+    
+            $.each(users.unavailable_agents, function(i, agent) {
+                if(!(agent in self.agents)) {
+                    self.agents[agent] = new Agent(agent);
+                    self.agents[agent].availability('unavailable');
+                }
+            });
+    
+            $.each(users.guests, function(i, guest) {
+                if(!(guest[0] in self.guests)) {
+                    self.guests[guest[0]] = new Guest(guest[0], !!guest[1]);
+                    if(!!guest[1]) {
+                        self.agents[guest[1]].assign(self.guests[guest[0]]);
+                    }
+                }
+            });
         });
     },
 
