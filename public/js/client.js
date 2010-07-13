@@ -662,7 +662,7 @@ $.extend(GuestChat.prototype, {
     
     join: function(data) {
         this.room = data.room;
-        this.addMessage('You are now being assisted by ' + (data.user || '?'));
+        this.addMessage('You are now being assisted by ' + (data.agent || '?'));
         this.messageControlsDisabled(false);
     },
     

@@ -1,7 +1,7 @@
 var dbslayer = require('dbslayer'),
     db = new dbslayer.Server(DBSLAYER_HOST, DBSLAYER_PORT),
     PickleHack = require('./util').DjangoPickleReader;
-                
+
 exports.DjangoSession = new Class({
     constructor: function(sid, callback) {
         var self = this;
@@ -16,15 +16,19 @@ exports.DjangoSession = new Class({
                                         .replace(/[^A-Za-z0-9+=]/g, '')
                                         .base64Decoded;
                 pkl_session = pkl_session.slice(0, pkl_session.length - 32);
-                
+
                 try {
                     self.user_id = (new PickleHack()).id(pkl_session);
                 } catch(e) {
                     self.user_id = false;
                 }
             }
-            
+
             db.removeListener('result', arguments.callee);
+
+            if(!pkl_session || !self.user_id)
+                return callback.call(self, false);
+
             db.query(sprintf('SELECT username, first_name, last_name, \
                               is_staff, is_superuser FROM auth_user \
                               WHERE id="%d" LIMIT 1',
@@ -37,7 +41,7 @@ exports.DjangoSession = new Class({
                     self.last_name = user[2];
                     self.is_staff = parseInt(user[3]);
                     self.is_superuser = parseInt(user[4]);
-                    
+
                     db.removeListener('result', arguments.callee);
                     db.query(sprintf('SELECT ap.codename \
                                       FROM `auth_user_groups` AS aug, \

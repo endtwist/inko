@@ -11,6 +11,7 @@ var SessionBase = Base.extend({
         this.listeners = [];
         this.message_queue = [];
         this.csrf_token = '';
+        this.data = {};
 
         setInterval(this._expireConns.bind(this), 500);
     },
