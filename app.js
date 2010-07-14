@@ -115,6 +115,13 @@ post('/message/:id/typing', function(id) {
     ));
 });
 
+post('/direct_message', function() {
+    if(!this.has('type', 'agent')) return;
+
+    chat.manager.directMessage(this.session, this.param('agent'),
+                               this.param('body'));
+});
+
 get('/join/:id', function(id) {
     if(!this.has('username')) return;
     // Join room :id

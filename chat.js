@@ -203,8 +203,8 @@ exports.manager = new (new Class({
             return false;
         };
 
+        var self = this;
         if(name in this.rooms) {
-            var self = this;
             room_obj = function() {
                 var action = arguments[0];
                 var args = Array.prototype.slice.call(arguments, 1);
@@ -243,6 +243,23 @@ exports.manager = new (new Class({
                                               ''];
                     })
         };
+    },
+    
+    directMessage: function(user, recip, body) {
+        var recip_ = this.available_agents.find(function(agent) {
+                         return agent.get('username') == recip;
+                     }) ||
+                     this.unavailable_agents.find(function(agent) {
+                         return agent.get('username') == recip;
+                     });
+        if(!recip_) user.respond({type: 'error', error: 'no such agent'});
+        
+        recip_.notify((new exports.Message(
+            user,
+            body
+        )).toString());
+        
+        user.respond({type: 'success', success: 'message sent'});
     }
 }));
 
