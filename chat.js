@@ -15,7 +15,7 @@ exports.manager = new (new Class({
         this.grim_reaper = setInterval(this.reaper.bind(this), (5).seconds);
     },
 
-    set sessionHandler(sh) {
+    set session_handler(sh) {
         var self = this;
         sh.events.addListener('signedOn', function(session) {
             if(session.type == 'agent') {
@@ -55,7 +55,7 @@ exports.manager = new (new Class({
             ));
         });
 
-        this._sessionHandler = sh;
+        this._session_handler = sh;
     },
 
     defineGuest: function(session, data) {

@@ -264,7 +264,7 @@ Session.Djangofied = Plugin.extend({
             this.store = new (this.dataStore || exports.Store.Memory)(options);
             this.startReaper();
             this.events = new events.EventEmitter();
-            chat.manager.sessionHandler = this;
+            chat.manager.session_handler = this;
         },
 
         startReaper: function() {
