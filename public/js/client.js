@@ -22,11 +22,26 @@ inko.view.list.Render = uki.newClass(uki.view.list.Render, {
 
 function chatView() {
     return { view: 'Box', rect: '700 750', anchors: 'top left right bottom',
+             className: 'chatView',
              childViews: [
                { view: 'Box', rect: '700 100',
                  anchors: 'top left right', className: 'info',
                  background: 'cssBox(background:#EDF3FE;border-bottom:1px solid #999)',
-                 textSelectable: true
+                 textSelectable: true,
+                 childViews: [
+                    { view: 'Label', rect: '20 20 200 15',
+                      anchors: 'top left', className: 'chatUsername',
+                      text: 'Username'
+                    },
+                    { view: 'Label', rect: '20 50 200 15',
+                      anchors: 'top left', className: 'chatQuestion',
+                      text: 'This is where the question goes?'
+                    },
+                    { view: 'Label', rect: '20 70 200 15',
+                      anchors: 'top left', className: 'chatOtherInfo',
+                      text: 'Other information...'
+                    },
+                 ]
                },
                { view: 'Box', rect: '0 100 700 650',
                  anchors: 'top left right bottom', className: 'messages',
@@ -77,7 +92,6 @@ var Agent = function(username) {
                 });
             }
         });
-
         users.data(user_data);
         this._availability = avail;
     };
@@ -181,32 +195,41 @@ var Room = function(name, topic, guest) {
         this.topic = topic;
         this.users = [];
         this._private = false;
+        
+        var room_view = chatView();
+        room_view.id = 'room-' + this.name;
+        this.room_view = uki(room_view)
+                        .attachTo($('#chatArea')[0], '700 750');
+
+        var message_list_container = $(this.room_view.childViews()[1].dom())
+                                   .find('div').css('overflow-y', 'scroll');
+        this.message_list = $('<ol class="message-list">')
+                           .appendTo(message_list_container);
 
         if(guest && guest['username']) {
             this._private = true;
             this.guest = guest;
 
-            var list = uki('#helping>List');
-            list.data($.merge(list.data(), [{
+            var list = uki('#users'),
+                list_data = list.data();
+            list_data[3].children.push({
                 room: this.name,
-                text: guest.username
-            }]));
-
-            var room_view = chatView();
-            room_view.id = 'room-' + this.name;
-            this.room_view = uki(room_view)
-                            .attachTo($('#chatArea')[0], '700 750');
-
-            var message_list_container = $(this.room_view.childViews()[1].dom())
-                                       .find('div').css('overflow-y', 'scroll');
-            this.message_list = $('<ol class="message-list">')
-                               .appendTo(message_list_container);
+                username: guest.username,
+                data: guest.username
+            });
+            list.data(list_data);
+            
+            $(this.room_view[0]._dom).find('.chatUsername').html(guest.username)
+                                     .find('.chatQuestion').html(guest.question)
+                                     .find('.chatOtherInfo')
+                                     .html('Firefox ' + guest.version + ' / ' +
+                                           guest.os + ' / ' + guest.extensions);
         }
     };
 
     this.show = function() {
-        uki('#chatArea>Box').visible(false);
-        this.room_view.visible(true);
+        $('.chatView').hide();
+        $(this.room_view[0]._dom).show();
     };
 
     this.destroy = function() {
@@ -293,42 +316,19 @@ var AgentChat = function(agent) {
             },
         ],
         rightChildViews: [
-            { view: 'HSplitPane', rect: '850 800',
-              anchors: 'left top right bottom', handleWidth: 1,
-              handlePosition: 700, leftMin: 250, rightMin: 150,
-              leftChildViews: [
-                    { view: 'Box', rect: '700 750', anchors: 'top left right bottom',
-                      id: 'chatArea'
-                    },
-                    { view: 'Box', rect: '0 750 700 50',
-                      background: 'theme(panel)',
-                      anchors: 'left right bottom', childViews: [
-                        { view: 'TextField', rect: '10 10 590 30',
-                          style: {fontSize: '14px'},
-                          anchors: 'top left right bottom', name: 'body', id: 'body'
-                        },
-                        { view: 'Button', rect: '610 10 80 30', text: 'Send',
-                          anchors: 'top right', id: 'send'
-                        }
-                      ]
-                    }
-              ],
-              rightChildViews: [
-                  { view: 'Box', rect: '150 30',
-                    anchors: 'top left right',
-                    background: 'theme(panel)',
-                    childViews: [
-                        { view: 'Label', rect: '10 0 150 30',
-                          anchors: 'top left right bottom', html: 'Active Conversations' }
-                    ]
-                  },
-                  { view: 'ScrollPane', rect: '0 30 150 770',
-                    anchors: 'top left right bottom', id: 'helping',
-                    childViews: [
-                        { view: 'inko.view.List', rect: '150 770',
-                          anchors: 'top left right bottom', data: [] }
-                    ]
-                  }
+            { view: 'Box', rect: '850 750', anchors: 'top left right bottom',
+              id: 'chatArea'
+            },
+            { view: 'Box', rect: '0 750 850 50',
+              background: 'theme(panel)',
+              anchors: 'left right bottom', childViews: [
+                { view: 'TextField', rect: '10 10 740 30',
+                  style: {fontSize: '14px'},
+                  anchors: 'top left right bottom', name: 'body', id: 'body'
+                },
+                { view: 'Button', rect: '760 10 80 30', text: 'Send',
+                  anchors: 'top right', id: 'send'
+                }
               ]
             }
        ]
@@ -336,20 +336,17 @@ var AgentChat = function(agent) {
 
     $('#assist-guest').click(function() { self.assist(); });
 
-    uki('#helping>List').bind('keydown mousedown', function(e) {
-        var listdata = this.data();
-        if(!listdata[this.selectedIndex()] && self.active_room) {
-            var list = this;
-            $.each(listdata, function(i, el) {
-                if(el.room == self.active_room) {
-                    list.selectedIndex(i);
-                    return false;
-                }
-            });
-        } else if(listdata[this.selectedIndex()]) {
-            var item = listdata[this.selectedIndex()];
-            self.rooms[item.room].show();
-            self.active_room = item.room;
+    uki('#users').bind('keyup mousedown', function(e) {
+        var selection = this.selectedRows()[0];
+        if(selection) {
+            if('room' in selection && self.rooms[selection.room]) {
+                self.rooms[selection.room].show();
+                self.messageControlsDisabled(false);
+                self.active_room = selection.room;
+            } else if('username' in selection && self.dms[selection.username]) {
+                self.dms[selection.username].show();
+                self.messageControlsDisabled(false);
+            }
         }
     });
 
@@ -407,6 +404,7 @@ var AgentChat = function(agent) {
     this.guests = {};
 
     this.rooms = {};
+    this.dms = {};
     this.active_room = null;
 
     this.messageControlsDisabled(true);
@@ -451,6 +449,8 @@ $.extend(AgentChat.prototype, {
                     }
                 }
             });
+            
+            self.expando();
         });
     },
 
@@ -465,18 +465,25 @@ $.extend(AgentChat.prototype, {
                     new Room(data.room, data.topic, data.guest);
                 self.messageControlsDisabled(false);
 
-                if(!self.active_room) {
+                if(self.active_room)
                     self.active_room = data.room;
-                    var list = uki('#helping>List');
-                    $.each(list.data(), function(i, el) {
-                        if(el.room == data.room) {
-                            list.selectedIndex(i);
-                            return false;
-                        }
-                    });
-                }
+                self.expando();
             }
         });
+    },
+    
+    expando: function() {
+        var data = uki('#users').data().slice();
+        while(itm = data.shift()) {
+            for(var i = 0, ld = uki('#users')[0].listData().length;
+                i < ld;
+                i++) {
+                if(uki('#users')[0].listData()[i] == itm) {
+                    uki('#users')[0].open(i);
+                    break;
+                }
+            }
+        }
     },
 
     update: function(data) {
@@ -505,6 +512,8 @@ $.extend(AgentChat.prototype, {
                     this.guests[user].dequeue();
                 break;
             }
+            
+            this.expando();
         } else if(data.users.length > 1) {
             switch(data.details) {
                 case 'assigned':
@@ -524,6 +533,23 @@ $.extend(AgentChat.prototype, {
             this.rooms[data.room].addMessage(data.user,
                                              data.body,
                                              data.user == USERNAME);
+        else if(!data.room.length) {
+            if(!(data.user in this.dms)) {
+                this.dms[data.user] = new Room(data.user.replace(/[^A-Za-z0-9_-]/, ''));
+                
+                var list = uki('#users'),
+                    list_data = list.data();
+                list_data[4].children.push({
+                    username: data.user,
+                    data: data.user
+                });
+                list.data(list_data);
+            }
+            
+            this.dms[data.user].addMessage(data.user,
+                                           data.body,
+                                           data.user == USERNAME);
+        }
     },
 
     notification: function(data) {
