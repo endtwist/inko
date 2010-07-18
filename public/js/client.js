@@ -350,6 +350,7 @@ var AgentChat = function(agent) {
         }
     });
 
+    /*
     $(uki('#helping>List').dom()).find('.close').live('click', function(e) {
         var list = uki('#helping>List'),
             listdata = list.data(),
@@ -377,7 +378,8 @@ var AgentChat = function(agent) {
 
         return false;
     });
-
+    */
+    
     var sendAction = function(e) {
         if(!self.active_room)
             return self.messageControlsDisabled(true);

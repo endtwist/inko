@@ -1,4 +1,5 @@
-require.paths.unshift(require.paths[0] + '/express');
+#!/usr/bin/env node
+require.paths.unshift(require.paths[0] + '/express-0.14.0');
 require.paths.unshift('./libs');
 var sys = require('sys'),
     fs = require('fs'),
@@ -14,6 +15,35 @@ try { Object.merge(global, require('./settings.local')); } catch(e) {}
 Object.merge(global, require('./session'));
 require('./util');
 var chat = require('./chat');
+    
+try {
+    var daemon = require('daemon.node/daemon');
+    
+    switch(process.argv[2]) {
+        case 'stop':
+            process.kill(parseInt(fs.readFileSync(PID_FILE)));
+            process.exit(0);
+        break;
+        
+        case 'start':
+            var pid = daemon.start();
+            daemon.lock(PID_FILE);
+            daemon.closeStdin();
+            daemon.redirectOut(LOG_FILE);
+        break;
+        
+        case 'nodaemon':
+            sys.puts('Starting without daemonizing...');
+        break;
+        
+        default:
+            sys.puts('Usage: [start|stop]');
+            process.exit(0);
+    }
+} catch(e) {
+    sys.puts('daemon.node not found! Please compile' +
+             ' libs/daemon.node/daemon.node.');
+}
 
 configure('development', function() {
     use(Logger);

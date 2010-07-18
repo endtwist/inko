@@ -2,8 +2,8 @@ while getopts trdx opt
 do
     case "$opt" in
       t)  expresso test/tests/*;;
-      r)  ENVIRONMENT="production" && node app.js;;
-      d)  node reloader.js app.js;;
+      r)  ENVIRONMENT="production" && node app.js start;;
+      d)  node reloader.js app.js nodaemon;;
       x)  dbslayer -s kitsune -c `pwd`/configs/dbslayer.local.cnf;;
       \?) # unknown flag
           echo >&2 \

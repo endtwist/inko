@@ -18,3 +18,7 @@ AGENT_MAX_GUESTS = 1
 
 // Chat Defaults
 MAX_CHAT_INACTIVITY = (5).minutes
+
+// Logging & PID for daemonizing
+PID_FILE = '/var/run/inko.pid'
+LOG_FILE = '/var/log/inko.log'

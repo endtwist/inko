@@ -7,7 +7,7 @@ A live chat support system for support.mozilla.com.
 * [node.js](http://nodejs.org) == 0.1.97
 * [dbslayer](http://code.nytimes.com/projects/dbslayer/wiki) == beta-12
 * [npm](http://github.com/isaacs/npm) (node.js package manager) >= 0.1.13
-* [express](http://github.com/visionmedia/express) (framework) == 0.13.0
+* [express](http://github.com/visionmedia/express) (framework) == 0.14.0
 
 ## Installation
 
@@ -23,7 +23,7 @@ Install npm, a package manager for node.js (on OS X, its easiest to do using [ho
     brew install npm
 
 Install express, a node.js web framework:
-    npm install express
+    npm install express@0.14.0
 
 Install dbslayer:
     wget http://code.nytimes.com/downloads/dbslayer-beta-12.tgz
