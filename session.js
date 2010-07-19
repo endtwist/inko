@@ -145,7 +145,7 @@ var Agent = SessionBase.extend({
         // Unassign a 'Guest' from this 'Agent'
         var pos = this.guests.indexOf(guest);
         this.guests.splice(pos, 1);
-        
+
         if(this.available)
             Session.Djangofied.events.emit('available', this);
     },
@@ -210,7 +210,7 @@ Store.MemoryExtended = Store.Memory.extend({
             });
         }
     },
-    
+
     get: function(sid) {
         return (sid && this.store[sid] ? this.store[sid] : false);
     },
@@ -241,7 +241,7 @@ Store.MemoryExtended = Store.Memory.extend({
         callback(null,
                  new Guest(sid, {data: []}), true);
     },
-    
+
     reap: function(ms) {
         var threshold = +new Date(Date.now() - ms),
             sids = Object.keys(this.store);
@@ -305,11 +305,11 @@ Session.Djangofied = Plugin.extend({
 
                 event.request.session = session;
                 event.request.session.touch();
-                
+
                 event.request.has = function(keys, eq) {
                     if(!(keys instanceof Array)) keys = [keys];
-                    
-                    if(!keys.every(function(k) { 
+
+                    if(!keys.every(function(k) {
                         var v = event.request.session.get(k);
                         return (eq ? v === eq : v.length);
                     })) {
@@ -317,10 +317,10 @@ Session.Djangofied = Plugin.extend({
                             type: 'error',
                             error: 'not authenticated'
                         });
-                        
+
                         return false;
                     }
-                    
+
                     return true;
                 };
 

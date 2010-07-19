@@ -23,7 +23,13 @@ Install npm, a package manager for node.js (on OS X, its easiest to do using [ho
     brew install npm
 
 Install express, a node.js web framework:
-    npm install express@0.14.0
+    npm install express@0.14.1
+
+Compile daemon.node:
+    cd libs/daemon.node
+    node-waf configure build
+    cp build/default/daemon.node .
+    rm -rf build
 
 Install dbslayer:
     wget http://code.nytimes.com/downloads/dbslayer-beta-12.tgz

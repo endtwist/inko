@@ -31,7 +31,7 @@ exports.manager = new (new Class({
             function(session) {
                 self.agentUnavailable(session);
             });
-            
+
         sh.events.addListener('available',
             function(session) {
                 self.agentAvailable(session);
@@ -47,7 +47,7 @@ exports.manager = new (new Class({
                 (pos = self.guests.indexOf(session) &&
                        self.guests.splice(pos, 1));
             }
-            
+
             self.events.emit('message', new exports.Status(
                 session,
                 'availability',
@@ -245,7 +245,7 @@ exports.manager = new (new Class({
                     })
         };
     },
-    
+
     directMessage: function(user, recip, body) {
         var recip_ = this.available_agents.find(function(agent) {
                          return agent.get('username') == recip;
@@ -253,14 +253,31 @@ exports.manager = new (new Class({
                      this.unavailable_agents.find(function(agent) {
                          return agent.get('username') == recip;
                      });
-        if(!recip_) user.respond({type: 'error', error: 'no such agent'});
-        
+        if(!recip_)
+            return user.respond({type: 'error', error: 'no such agent'});
+
         recip_.notify((new exports.Message(
             user,
             body
         )).toString());
-        
+
         user.respond({type: 'success', success: 'message sent'});
+    },
+
+    transferRoom: function(room, old_agent, new_agent) {
+        if(!(room in this.rooms))
+            return old_agent.respond({type: 'error', error: 'no such room'});
+
+        var new_agent_sess = this.available_agents.find(function(agent) {
+                                 return agent.get('username') == new_agent;
+                             }) ||
+                             this.unavailable_agents.find(function(agent) {
+                                 return agent.get('username') == new_agent;
+                             });
+        if(!new_agent_sess)
+            return old_agent.respond({type: 'error', error: 'no such agent'});
+
+        this.rooms[room].transfer(old_agent, new_agent_sess);
     }
 }));
 
@@ -446,7 +463,33 @@ exports.Room = new Class({
 
         message.user.respond({type: 'success', success: 'message sent'});
         this.touch();
-        this.log.push(message);
+        
+        if(message instanceof exports.Message)
+            this.log.push(message);
+    },
+
+    transfer: function(old_agent, new_agent) {
+        if(this.users[0] != old_agent)
+            return old_agent.respond({type: 'error', error: 'not initiating agent'});
+
+        this.users[0] = new_agent;
+
+        old_agent.unassignGuest(this.guest);
+        new_agent.assignGuest(this.guest);
+
+        old_agent.respond({type: 'success', success: 'room transferred'});
+        this.send(new exports.Notification(old_agent, 'left'));
+        this.send(new exports.Notification(new_agent, 'joined'));
+
+        var backlog = [];
+        this.log.each(function(msg) {
+            backlog.push(JSON.decode(msg.toString()));
+        });
+        new_agent.notify({type: 'transfer',
+                          room: this.id,
+                          topic: this.topic,
+                          guest: this.guest.data,
+                          backlog: backlog});
     },
 
     toString: function() {

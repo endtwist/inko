@@ -399,7 +399,8 @@ var AgentChat = function(agent) {
         'notification': this.notification,
         'join': this.join,
         'leave': this.leave,
-        'end': this.end
+        'end': this.end,
+        'transfer': this.transfer
     };
 
     this.agents = {};
@@ -574,6 +575,11 @@ $.extend(AgentChat.prototype, {
     end: function(data) {
         if(data.room in this.rooms)
             this.rooms[data.room].addMessage('This room has been terminated.');
+    },
+    
+    transfer: function(data) {
+        this.rooms[data.room] =
+            new Room(data.room, data.topic, data.guest);
     },
 
     messageControlsDisabled: function(state) {
