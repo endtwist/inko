@@ -17,20 +17,36 @@ require('./util');
 var chat = require('./chat');
     
 try {
-    var daemon = require('daemon.node/daemon');
-    
+    var daemon = require('daemon.node/daemon')
+        stop_daemon = function() {
+            try {
+                process.kill(parseInt(fs.readFileSync(PID_FILE)));
+            } catch(e) {
+                sys.puts('Inko is not currently running!');
+            }
+        },
+        start_daemon = function() {
+            var pid = daemon.start();
+            daemon.lock(PID_FILE);
+            daemon.stdin.close();
+            daemon.stdout.sendTo(LOG_FILE);
+            daemon.stderr.sendTo(LOG_FILE);
+        }
+
     switch(process.argv[2]) {
         case 'stop':
-            process.kill(parseInt(fs.readFileSync(PID_FILE)));
+            stop_daemon();
             process.exit(0);
         break;
         
         case 'start':
-            var pid = daemon.start();
-            daemon.lock(PID_FILE);
-            daemon.closeStdin();
-            daemon.redirectOut(LOG_FILE);
+            start_daemon();
         break;
+        
+        case 'restart':
+            stop_daemon();
+            start_daemon();
+        break;            
         
         case 'nodaemon':
             sys.puts('Starting without daemonizing...');
