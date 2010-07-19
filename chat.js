@@ -156,11 +156,12 @@ exports.manager = new (new Class({
             self = this;
         this.events.emit('message',
                          new exports.Update([guest], 'dequeued'));
+        self.wait_times.push(
+            Math.floor((Date.now() - self.last_dequeue) / 1000));
+        self.wait_times = self.wait_times.slice(-5);
+        self.last_dequeue = Date.now();
+
         this.guests.each(function(g, i) {
-            self.wait_times.push(
-                Math.floor((Date.now() - self.last_dequeue) / 1000));
-            self.wait_times = self.wait_times.slice(-5);
-            self.last_dequeue = Date.now();
             g.notify({type: 'qpos', position: i, wait: self.wait_times.avg});
         });
         return guest;
