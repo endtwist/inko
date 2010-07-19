@@ -352,6 +352,7 @@ exports.Room = new Class({
         this.id = utils.uid();
         this.topic = '';
         this.last_activity = Date.now();
+        this.log = [];
 
         if(!(users instanceof Array))
             users = [users];
@@ -444,6 +445,7 @@ exports.Room = new Class({
 
         message.user.respond({type: 'success', success: 'message sent'});
         this.touch();
+        this.log.push(message);
     },
 
     toString: function() {
