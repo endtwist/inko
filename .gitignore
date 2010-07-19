@@ -1,1 +1,3 @@
 *.local.*
+libs/daemon.node/.lock-wscript
+libs/daemon.node/daemon.node
