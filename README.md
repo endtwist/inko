@@ -4,10 +4,10 @@ A live chat support system for support.mozilla.com.
 
 ## Requirements
 
-* [node.js](http://nodejs.org) == 0.1.97
+* [node.js](http://nodejs.org) >= 0.1.99
 * [dbslayer](http://code.nytimes.com/projects/dbslayer/wiki) == beta-12
 * [npm](http://github.com/isaacs/npm) (node.js package manager) >= 0.1.13
-* [express](http://github.com/visionmedia/express) (framework) == 0.14.0
+* [express](http://github.com/visionmedia/express) (framework) == 0.14.1
 
 ## Installation
 
@@ -39,15 +39,8 @@ Install dbslayer:
     make
     make install
 
-If running locally, create or get an SSL certificate
-    http://sial.org/howto/openssl/self-signed/
-
 Create a local settings file by copying settings.js to settings.local.js
     cp settings.js settings.local.js
-
-Set the path to your SSL `.key` and `.cert` files in settings.local.js
-    SSL_KEY = '.../your.key'
-    SSL_CERT = '.../your.cert'
 
 Create a local dbslayer config file by copying configs/dbslayer.prod.cnf to configs/dbslayer.local.cnf
     cp configs/dbslayer.prod.cnf configs/dbslayer.local.cnf
