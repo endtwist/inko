@@ -60,7 +60,7 @@ exports.manager = new (new Class({
 
     defineGuest: function(session, data) {
         if(!['username', 'question', 'os', 'version', 'extensions']
-           .every(function(el) { return data[el].length; }))
+           .every(function(el) { return data[el] && data[el].length; }))
            return session.respond({type: 'error', error: 'missing data'});
 
         session.data = data;
@@ -417,7 +417,8 @@ exports.Room = new Class({
 
     leave: function(user) {
         // Add room: key to errors
-        if(this.users.splice(this.users.indexOf(user), 1))
+        if(~this.users.indexOf(user) &&
+            this.users.splice(this.users.indexOf(user), 1))
             user.respond({type: 'left', room: this.toString()});
         else {
             user.respond({type: 'error', error: 'not in room'});
@@ -463,7 +464,7 @@ exports.Room = new Class({
 
         message.user.respond({type: 'success', success: 'message sent'});
         this.touch();
-        
+
         if(message instanceof exports.Message)
             this.log.push(message);
     },

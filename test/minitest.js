@@ -1,5 +1,27 @@
 var sys = require("sys");
-var colours = require("./colours");
+var colours = {
+  reset: "\x1B[0m",
+
+  grey:    "\x1B[0;30m",
+  red:     "\x1B[0;31m",
+  green:   "\x1B[0;32m",
+  yellow:  "\x1B[0;33m",
+  blue:    "\x1B[0;34m",
+  magenta: "\x1B[0;35m",
+  cyan:    "\x1B[0;36m",
+  white:   "\x1B[0;37m",
+
+  bold: {
+    grey:    "\x1B[1;30m",
+    red:     "\x1B[1;31m",
+    green:   "\x1B[1;32m",
+    yellow:  "\x1B[1;33m",
+    blue:    "\x1B[1;34m",
+    magenta: "\x1B[1;35m",
+    cyan:    "\x1B[1;36m",
+    white:   "\x1B[1;37m",
+  }
+};
 
 /* suite */
 function Suite () {
@@ -27,7 +49,6 @@ var suite = exports.suite = new Suite();
 /* context */
 function Context (description, block) {
   this.tests = [];
-  this.finished = 0;
   this.block = block;
   this.description = description;
 };
@@ -38,13 +59,20 @@ Context.prototype.run = function () {
 
 Context.prototype.register = function (test) {
   this.tests.push(test);
-  test.context = this;
 };
 
 Context.prototype.report = function () {
+  var results = {pass: 0, fail: 0, unfinished: 0};
   this.tests.forEach(function (test) {
-    test.report();
+    var res = test.report();
+    if(res == 1) results.pass++;
+    else if(res == 0) results.fail++;
+    else if(res == -1) results.unfinished++;
   });
+  
+  sys.puts(colours.green + results.pass + ' tests passed; ' +
+           colours.red + results.fail + ' tests failed; ' +
+           colours.magenta + results.unfinished + ' tests didn\'t finish');
 };
 
 /* test */
@@ -55,16 +83,12 @@ function Test (description, block, setupBlock) {
 };
 
 Test.prototype.run = function () {
-  this.context.currently = this;
   try {
     if (this.setupBlock) {
       this.setupBlock.call(this);
     };
 
-    this.block.apply(this, [
-        this,
-        wrapPotentialException(this)
-    ]);
+    this.block.call(this, this);
   } catch(error) {
     this.failed(error);
   };
@@ -72,30 +96,22 @@ Test.prototype.run = function () {
 
 Test.prototype.finished = function () {
   this.result = this.reportSuccess();
-  this.done();
+  this.resultBool = true;
 };
 
 Test.prototype.failed = function (error) {
   this.result = this.reportError(error);
-  this.done();
+  this.resultBool = false;
 };
 
 Test.prototype.report = function () {
   if (this.result) {
     sys.puts(this.result);
+    return this.resultBool;
   } else {
     sys.puts(this.reportNotFinished());
+    return -1;
   };
-};
-
-Test.prototype.done = function () {
-  this.context.finished++;
-
-  if(this.context.finished >= this.context.tests.length) {
-    process.exit();
-  } else {
-    this.context.tests[this.context.finished].run();
-  }
 };
 
 /* output formatters */
@@ -118,7 +134,7 @@ Test.prototype.reportError = function (exception) {
 };
 
 Test.prototype.reportNotFinished = function () {
-  return colours.bold.magenta + "  ✖ Didn't finished: " + colours.reset + this.description;
+  return colours.bold.magenta + "  ✖ Didn't finish: " + colours.reset + this.description;
 };
 
 /* DSL */
@@ -142,11 +158,7 @@ function context (description, block) {
 Context.prototype.assertion = function (description, block) {
   var test = new Test(description, block, this.setupBlock);
   this.register(test);
-  //test.run();
-};
-
-Context.prototype.execute = function () {
-  this.tests[0].run();
+  test.run();
 };
 
 Context.prototype.setup = function (block) {
@@ -154,9 +166,11 @@ Context.prototype.setup = function (block) {
 };
 
 function runAtExit () {
-  process.addListener("exit", function () {
-    suite.report();
-  });
+  if(!process.listeners('exit').length) {
+      process.addListener("exit", function () {
+        suite.report();
+      });
+  }
 };
 
 function setupUncaughtExceptionListener () {
@@ -171,18 +185,6 @@ function setupUncaughtExceptionListener () {
 function setupListeners () {
   setupUncaughtExceptionListener();
   runAtExit();
-};
-
-function wrapPotentialException(test) {
-    return function(func) {
-      return function() {
-          try {
-            func.apply(func, arguments);
-          } catch(error) {
-            test.failed(error);
-          }
-      }
-    };
 };
 
 /* exports */
