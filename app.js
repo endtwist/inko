@@ -174,6 +174,15 @@ post('/transfer/:id', function(id) {
     chat.manager.transferRoom(id, this.session, this.param('agent'));
 });
 
+post('/set_limit', function() {
+    if(!this.has('type', 'agent')) return;
+    
+    if(this.session.hasPerm('monitor_live_chat') && this.param('agent'))
+        chat.manager.setLimit(this.param('agent'), this.param('limit'));
+    else
+        chat.manager.setLimit(this.session, this.param('limit'));
+});
+
 get('/join/:id', function(id) {
     if(!this.has('username')) return;
     // Join room :id
@@ -196,12 +205,6 @@ get('/create/:name', function(name) {
     if(!this.has('type', 'agent')) return;
     // Create room :name
     chat.manager.initRoom(this.session, name);
-});
-
-get('/sendmsg', function(name) {
-    this.render('send.html.haml', {
-        locals: {title: "Send a message"}
-    });
 });
 
 var server = run(APP_PORT, APP_HOST);

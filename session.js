@@ -124,7 +124,7 @@ var Agent = SessionBase.extend({
     */
     constructor: function(id, options) {
         SessionBase.call(this, id);
-        this.maxGuests = 1;
+        this.maxGuests = AGENT_DEFAULT_GUEST_LIMIT;
         Object.merge(this, options);
         this.type = 'agent';
         this.guests = [];
@@ -225,7 +225,7 @@ Store.MemoryExtended = Store.Memory.extend({
                           ~this.perms.indexOf('monitor_live_chat')) {
                     callback(null,
                              new Agent(sid, {
-                                maxGuests: AGENT_MAX_GUESTS,
+                                maxGuests: AGENT_DEFAULT_GUEST_LIMIT,
                                 data: this
                              }), true);
                 } else {

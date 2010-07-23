@@ -288,6 +288,26 @@ exports.manager = new (new Class({
             return old_agent.respond({type: 'error', error: 'no such agent'});
 
         this.rooms[room].transfer(old_agent, new_agent_sess);
+    },
+    
+    setLimit: function(session, limit) {
+        if(typeof session == 'string') {
+            session = this.available_agents.find(function(agent) {
+                          return agent.get('username') == session;
+                      }) ||
+                      this.unavailable_agents.find(function(agent) {
+                          return agent.get('username') == session;
+                      });
+            if(!session)
+                session.respond({type: 'error', error: 'no such agent'});
+        }
+
+        if(limit <= AGENT_MAX_GUEST_LIMIT) {
+            session.maxGuests = limit;
+            session.respond({type: 'success', success: 'limit changed'});
+        } else {
+            session.respond({type: 'error', error: 'limit exceeds maximum'});
+        }
     }
 }));
 
