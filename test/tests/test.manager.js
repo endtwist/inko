@@ -345,4 +345,115 @@ minitest.context("Manager", function() {
             this.manager.unavailable_agents = []; // reset
         }
     );
+    
+    this.assertion(
+        "initRoom creates a public Room with proper user permissions",
+        function(test) {
+            var dummyAgent = {
+                    type: 'agent',
+                    available: true,
+                    assignGuest: function(guest) { this._guest = guest; },
+                    get: function() { return ''; },
+                    respond: function() {
+                        this._result = Array.prototype.slice.call(arguments);
+                    },
+                    notify: function() {
+                        this._result = Array.prototype.slice.call(arguments);
+                    },
+                    hasPerm: function() { return true; }
+                };
+            this.manager.initRoom(dummyAgent, 'HelloRoom');
+            assert.ok('HelloRoom' in this.manager.rooms);
+            assert.equal(this.manager.rooms['HelloRoom'].users.length, 1);
+            test.finished();
+            
+            this.manager.rooms = {}; // reset
+        }
+    );
+    
+    this.assertion(
+        "initRoom fails without the proper permissions",
+        function(test) {
+            var dummyGuest = {
+                    type: 'guest',
+                    get: function() { return ''; },
+                    respond: function() {
+                        this._result = Array.prototype.slice.call(arguments);
+                    },
+                    notify: function() {
+                        this._result = Array.prototype.slice.call(arguments);
+                    },
+                    hasPerm: function() { return false; }
+                };
+            this.manager.initRoom(dummyGuest, 'HelloRoom');
+            assert.equal('HelloRoom' in this.manager.rooms, false);
+            assert.equal(dummyGuest._result[1].type, 'error');
+            assert.equal(dummyGuest._result[1].error, 'no permissions');
+            test.finished();
+            
+            this.manager.rooms = {}; // reset
+        }
+    );
+    
+    this.assertion(
+        "destroyRoom destroys a public room with the proper permissions",
+        function(test) {
+            var dummyAgent = {
+                    type: 'agent',
+                    available: true,
+                    assignGuest: function(guest) { this._guest = guest; },
+                    get: function() { return ''; },
+                    respond: function() {
+                        this._result = Array.prototype.slice.call(arguments);
+                    },
+                    notify: function() {
+                        this._result = Array.prototype.slice.call(arguments);
+                    },
+                    hasPerm: function() { return true; }
+                };
+            this.manager.initRoom(dummyAgent, 'HelloRoom');
+            this.manager.destroyRoom(dummyAgent, 'HelloRoom');
+            assert.equal('HelloRoom' in this.manager.rooms, false);
+            test.finished();
+            
+            this.manager.rooms = {}; // reset
+        }
+    );
+    
+    this.assertion(
+        "destroyRoom fails to destroy a public room without the proper perms",
+        function(test) {
+            var dummyAgent = {
+                    type: 'agent',
+                    available: true,
+                    assignGuest: function(guest) { this._guest = guest; },
+                    get: function() { return ''; },
+                    respond: function() {
+                        this._result = Array.prototype.slice.call(arguments);
+                    },
+                    notify: function() {
+                        this._result = Array.prototype.slice.call(arguments);
+                    },
+                    hasPerm: function() { return true; }
+                },
+                dummyGuest = {
+                    type: 'guest',
+                    get: function() { return ''; },
+                    respond: function() {
+                        this._result = Array.prototype.slice.call(arguments);
+                    },
+                    notify: function() {
+                        this._result = Array.prototype.slice.call(arguments);
+                    },
+                    hasPerm: function() { return false; }
+                };
+            this.manager.initRoom(dummyAgent, 'HelloRoom');
+            this.manager.destroyRoom(dummyGuest, 'HelloRoom');
+            assert.equal(dummyGuest._result[1].type, 'error');
+            assert.equal(dummyGuest._result[1].error, 'no permissions');
+            test.finished();
+            
+            this.manager.rooms = {}; // reset
+        }
+    );
 });

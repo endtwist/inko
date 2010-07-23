@@ -176,25 +176,35 @@ exports.manager = new (new Class({
 
     initRoom: function(user, room) {
         if(!user.hasPerm('monitor_live_chat')) {
-            //user.respond(403, {type: 'error', error: 'no permissions'});
-            //return;
+            user.respond(403, {type: 'error', error: 'no permissions'});
+            return;
         }
 
-        var room = new exports.Room([user], false);
-        this.rooms[room.toString()] = room;
+        if(room in this.rooms) {
+            this.rooms[room].join(user);
+        } else {
+            var new_room = new exports.Room([user], false);
+            this.rooms[room] = new_room;
+        }
     },
 
     destroyRoom: function(user, room) {
-        if(room in this.rooms) {
-            if(~this.rooms[room].users.indexOf(user)) {
-                this.rooms[room].end();
-                delete this.rooms[room];
-             } else {
-                user.respond({type: 'error', error: 'no permissions'});
-             }
-        } else {
+        if(!(room in this.rooms)) {
             user.respond({type: 'error', error: 'no such room'});
+            return;
         }
+        
+        if(!this.rooms[room]._private && !user.hasPerm('monitor_live_chat')) {
+            user.respond(403, {type: 'error', error: 'no permissions'});
+            return;
+        }
+        
+        if(~this.rooms[room].users.indexOf(user)) {
+            this.rooms[room].end();
+            delete this.rooms[room];
+         } else {
+            user.respond({type: 'error', error: 'no permissions'});
+         }
     },
 
     // lcm.with_('user', 'room or id')('action', 'arg', 'arg')
@@ -434,7 +444,7 @@ exports.Room = new Class({
             this.guest.unassignAgent();
 
         this.users.each(function(user) {
-            if(user.type != 'guest')
+            if(user.type != 'guest' && self.guest)
                 user.unassignGuest(self.guest);
             user.notify({type: 'end', room: self.toString()});
         });
