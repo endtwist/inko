@@ -216,4 +216,19 @@ get('/create/:name', function(name) {
     chat.manager.initRoom(this.session, name);
 });
 
+get('/waittime', function() {
+    var position = this.session ? chat.manager.guests.indexOf(this.session)
+                                : chat.manager.guests.length;
+    if (position == -1) position = chat.manager.guests.length;
+    var wait = {
+        'waittime': chat.manager.wait_times.avg,
+        'position': position + 1
+    }
+    if (this.session) {
+        this.session.respond(JSON.stringify(wait));
+    } else {
+        this.respond(200, JSON.stringify(wait));
+    }
+});
+
 var server = run(APP_PORT, APP_HOST);
