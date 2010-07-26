@@ -7,14 +7,11 @@ DBSLAYER_HOST = 'kitsune'
 DBSLAYER_PORT = 9090
 
 // Login URL
-LOGIN_URL = 'https://support.mozilla.com/login'
-
-// Permissions
-MONITOR_PERM = 'monitor_live_chat'
-AGENT_PERM = 'agent_live_chat'
+LOGIN_URL = 'https://kitsune/tiki-login_scr.php?locale='
 
 // Agent Defaults
-AGENT_MAX_GUESTS = 1
+AGENT_MAX_GUEST_LIMIT = 10
+AGENT_DEFAULT_GUEST_LIMIT = 3
 
 // Chat Defaults
 MAX_CHAT_INACTIVITY = (5).minutes
