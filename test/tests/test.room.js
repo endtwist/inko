@@ -139,7 +139,7 @@ minitest.context("Room", function() {
             test.finished();
         }
     );
-    
+
     this.assertion(
         "joining a public Room twice returns an error",
         function(test) {
@@ -179,7 +179,7 @@ minitest.context("Room", function() {
             test.finished();
         }
     );
-    
+
     this.assertion(
         "leaving a Room works",
         function(test) {
@@ -218,7 +218,7 @@ minitest.context("Room", function() {
             test.finished();
         }
     );
-    
+
     this.assertion(
         "leaving a Room you aren't in gives an error",
         function(test) {
@@ -255,6 +255,80 @@ minitest.context("Room", function() {
 
             assert.equal(dummyGuest.result[0][0].type, 'error');
             assert.equal(dummyGuest.result[0][0].error, 'not in room');
+            test.finished();
+        }
+    );
+
+    this.assertion(
+        "send broadcasts a message to all users in a public room",
+        function(test) {
+            var genDummyAgent = function() { return {
+                    type: 'agent',
+                    available: true,
+                    assignGuest: function(guest) { this._guest = guest; },
+                    get: function() { return ''; },
+                    result: [],
+                    respond: function() {
+                        this.result.push(Array.prototype.slice.call(arguments));
+                    },
+                    notify: function() {
+                        this.result.push(Array.prototype.slice.call(arguments));
+                    },
+                    hasPerm: function() { return false; }
+                }; },
+                dummyAgent1 = genDummyAgent(),
+                dummyAgent2 = genDummyAgent(),
+                room = new this.chat.Room([dummyAgent1, dummyAgent2]);
+
+            dummyAgent1.result = [];
+            dummyAgent2.result = [];
+            room.send(new this.chat.Message(dummyAgent1, 'Test'));
+
+            assert.equal(dummyAgent1.result[1][0].type, 'success');
+            assert.equal(dummyAgent1.result[1][0].success, 'message sent');
+            assert.equal(JSON.parse(dummyAgent2.result[0][0]).body, 'Test');
+            test.finished();
+        }
+    );
+    
+    this.assertion(
+        "send broadcasts a message to all users in a private room",
+        function(test) {
+            var dummyGuest = {
+                    type: 'guest',
+                    get: function() { return ''; },
+                    result: [],
+                    respond: function() {
+                        this.result.push(Array.prototype.slice.call(arguments));
+                    },
+                    notify: function() {
+                        this.result.push(Array.prototype.slice.call(arguments));
+                    },
+                    hasPerm: function() { return false; }
+                },
+                dummyAgent = {
+                    type: 'agent',
+                    available: true,
+                    assignGuest: function(guest) { this._guest = guest; },
+                    get: function() { return ''; },
+                    result: [],
+                    respond: function() {
+                        this.result.push(Array.prototype.slice.call(arguments));
+                    },
+                    notify: function() {
+                        this.result.push(Array.prototype.slice.call(arguments));
+                    },
+                    hasPerm: function() { return false; }
+                },
+                room = new this.chat.Room(dummyAgent, dummyGuest);
+
+            dummyAgent.result = [];
+            dummyGuest.result = [];
+            room.send(new this.chat.Message(dummyAgent, 'Test'));
+
+            assert.equal(dummyAgent.result[1][0].type, 'success');
+            assert.equal(dummyAgent.result[1][0].success, 'message sent');
+            assert.equal(JSON.parse(dummyGuest.result[0][0]).body, 'Test');
             test.finished();
         }
     );
