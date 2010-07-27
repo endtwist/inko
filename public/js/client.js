@@ -41,6 +41,10 @@ function chatView() {
                       anchors: 'top left', className: 'chatOtherInfo',
                       text: 'Other information...'
                     },
+                    { view: 'Button', rect: '630 10 50 30',
+                      anchors: 'top right', className: 'closeChat',
+                      text: 'Close'
+                    }
                  ]
                },
                { view: 'Box', rect: '0 100 700 650',
@@ -195,7 +199,8 @@ var Room = function(name, topic, guest) {
         this.topic = topic;
         this.users = [];
         this._private = false;
-        
+        this.active = true;
+
         var room_view = chatView();
         room_view.id = 'room-' + this.name;
         this.room_view = uki(room_view)
@@ -218,7 +223,7 @@ var Room = function(name, topic, guest) {
                 data: guest.username
             });
             list.data(list_data);
-            
+
             $(this.room_view[0]._dom).find('.chatUsername').html(guest.username)
                                      .find('.chatQuestion').html(guest.question)
                                      .find('.chatOtherInfo')
@@ -234,6 +239,19 @@ var Room = function(name, topic, guest) {
 
     this.destroy = function() {
         uki('#chatArea').removeChild(this.room_view);
+        
+        var self = this,
+            list = uki('#users'),
+            list_data = list.data();
+        $.each(list_data[3].children, function(index, value) {
+            if(value.room == self.name) {
+                list_data[3].children.splice(index, 1);
+                return false;
+            }
+        });
+        list.data(list_data);
+        
+        this.active = false;
     };
 
     this.join = function(username) {
@@ -276,9 +294,9 @@ var Room = function(name, topic, guest) {
 var AgentChat = function(agent) {
     $.ajaxSetup({cache: false});
     var self = this;
-    
-    uki(
-    { view: 'HSplitPane', rect: '1000 800', anchors: 'left top right bottom',
+
+    uki({
+        view: 'HSplitPane', rect: '1000 800', anchors: 'left top right bottom',
         handlePosition: 150, leftMin: 150, rightMin: 500, handleWidth: 1,
         background: '#EDF3FE',
         leftChildViews: [
@@ -289,11 +307,11 @@ var AgentChat = function(agent) {
                     anchors: 'top left right bottom', html: 'Users' }
               ]
             },
-            { view: 'ScrollPane', rect: '0 30 150 720',
+            { view: 'ScrollPane', rect: '0 30 150 680',
               anchors: 'top left right bottom',
               background: 'cssBox(border-bottom:1px solid #999;)',
               childViews: [
-                  { view: 'uki.more.view.TreeList', rect: '150 720',
+                  { view: 'uki.more.view.TreeList', rect: '150 680',
                     anchors: 'top left right bottom', rowHeight: 22,
                     style: {fontSize: '12px'}, id: 'users',
                     data: [
@@ -305,12 +323,16 @@ var AgentChat = function(agent) {
                     ] }
               ]
             },
-            { view: 'Box', rect: '0 750 150 50', anchors: 'bottom left right',
+            { view: 'Box', rect: '0 710 150 90', anchors: 'bottom left right',
               background: 'theme(panel)',
               childViews: [
                     { view: 'Button', rect: '10 10 130 30',
                       anchors: 'top left right bottom',
                       text: 'Assist Guest', id: 'assist-guest'
+                    },
+                    { view: 'Button', rect: '10 50 130 30',
+                      anchors: 'top left right bottom',
+                      text: 'Transfer Guest', id: 'transfer-guest'
                     }
               ]
             },
@@ -334,6 +356,42 @@ var AgentChat = function(agent) {
        ]
     }).attachTo(window, '1000 800', {minSize: '300 0'});
 
+    uki({
+        view: 'Box', rect: '1000 800', anchors: 'top left right bottom',
+        background: 'cssBox(background:#000;opacity:0.8;)', id: 'overlay'
+    }).attachTo(window, '1000 800');
+
+    uki({
+        view: 'Box', rect: '375 320 250 160', anchors: '',
+        id: 'transfer-win', background: 'cssBox(background:#fff;)',
+        childViews: [
+            { view: 'Label', rect: '30 30 340 20', anchors: 'top left',
+              html: 'Transfer this conversation to&hellip;'
+            },
+            { view: 'TextField', rect: '30 60 190 30',
+              anchors: 'top left right', id: 'transfer-to'
+            },
+            { view: 'Button', rect: '50 100 80 30',
+              anchors: 'top right', text: 'Cancel', id: 'cancel-transfer'
+            },
+            { view: 'Button', rect: '140 100 80 30',
+              anchors: 'top right', text: 'Transfer', id: 'transfer'
+            }
+        ]
+    }).attachTo(uki('#overlay').dom(), '1000 800');
+
+    $('#overlay, #transfer-win').hide();
+    uki('#transfer-guest').bind('click', function() {
+        $('#overlay, #transfer-win').show();
+        uki('#transfer-to').focus();
+    });
+    uki('#cancel-transfer').bind('click', function() {
+        $('#overlay, #transfer-win').hide();
+    });
+    uki('#transfer').bind('click', function() { self.transfer(); });
+    uki('#transfer-to').bind('keydown', function(event) {
+        if(event.keyCode == '13') self.transfer();
+    });
     $('#assist-guest').click(function() { self.assist(); });
 
     uki('#users').bind('keyup mousedown', function(e) {
@@ -341,7 +399,10 @@ var AgentChat = function(agent) {
         if(selection) {
             if('room' in selection && self.rooms[selection.room]) {
                 self.rooms[selection.room].show();
-                self.messageControlsDisabled(false);
+                if(self.rooms[selection.room].active)
+                    self.messageControlsDisabled(false);
+                else
+                    self.messageControlsDisabled(true);
                 self.active_room = selection.room;
             } else if('username' in selection && self.dms[selection.username]) {
                 self.dms[selection.username].show();
@@ -379,7 +440,7 @@ var AgentChat = function(agent) {
         return false;
     });
     */
-    
+
     var sendAction = function(e) {
         if(!self.active_room)
             return self.messageControlsDisabled(true);
@@ -400,7 +461,7 @@ var AgentChat = function(agent) {
         'join': this.join,
         'leave': this.leave,
         'end': this.end,
-        'transfer': this.transfer
+        'transfer': this.receiveTransfer
     };
 
     this.agents = {};
@@ -436,14 +497,14 @@ $.extend(AgentChat.prototype, {
                     self.agents[agent].availability('available');
                 }
             });
-    
+
             $.each(users.unavailable_agents, function(i, agent) {
                 if(!(agent in self.agents)) {
                     self.agents[agent] = new Agent(agent);
                     self.agents[agent].availability('unavailable');
                 }
             });
-    
+
             $.each(users.guests, function(i, guest) {
                 if(!(guest[0] in self.guests)) {
                     self.guests[guest[0]] = new Guest(guest[0], !!guest[1]);
@@ -452,7 +513,7 @@ $.extend(AgentChat.prototype, {
                     }
                 }
             });
-            
+
             self.expando();
         });
     },
@@ -466,15 +527,21 @@ $.extend(AgentChat.prototype, {
             if(data.type == 'joined') {
                 self.rooms[data.room] =
                     new Room(data.room, data.topic, data.guest);
+                $(self.rooms[data.room].room_view[0]._dom)
+                                       .find('.closeChat')
+                                       .click(function() {
+                                           $.getJSON('/end/' + data.room);
+                                           self.close(data.room);
+                                       });
                 self.messageControlsDisabled(false);
 
-                if(self.active_room)
+                if(!self.active_room)
                     self.active_room = data.room;
                 self.expando();
             }
         });
     },
-    
+
     expando: function() {
         var data = uki('#users').data().slice();
         while(itm = data.shift()) {
@@ -515,7 +582,7 @@ $.extend(AgentChat.prototype, {
                     this.guests[user].dequeue();
                 break;
             }
-            
+
             this.expando();
         } else if(data.users.length > 1) {
             switch(data.details) {
@@ -539,7 +606,7 @@ $.extend(AgentChat.prototype, {
         else if(!data.room.length) {
             if(!(data.user in this.dms)) {
                 this.dms[data.user] = new Room(data.user.replace(/[^A-Za-z0-9_-]/, ''));
-                
+
                 var list = uki('#users'),
                     list_data = list.data();
                 list_data[4].children.push({
@@ -548,7 +615,7 @@ $.extend(AgentChat.prototype, {
                 });
                 list.data(list_data);
             }
-            
+
             this.dms[data.user].addMessage(data.user,
                                            data.body,
                                            data.user == USERNAME);
@@ -573,20 +640,69 @@ $.extend(AgentChat.prototype, {
     },
 
     end: function(data) {
-        if(data.room in this.rooms)
+        if(data.room in this.rooms) {
             this.rooms[data.room].addMessage('This room has been terminated.');
+            this.rooms[data.room].active = false;
+            if(this.active_room == data.room)
+                this.messageControlsDisabled(true);
+        }
     },
-    
-    transfer: function(data) {
+
+    close: function(room) {
+        this.rooms[room].destroy();
+        delete this.rooms[room];
+        
+        if(room == this.active_room) {
+            var old_room = this.active_room;
+            for(var rm in this.rooms) {
+                this.rooms[rm].show();
+                this.active_room = rm;
+                if(!this.rooms[rm].active)
+                    this.messageControlsDisabled(true);
+                break;
+            }
+            if(this.active_room == old_room) {
+                this.active_room = null;
+                this.messageControlsDisabled(true);
+            }
+        }
+    },
+
+    transfer: function() {
+        var transfer_to = uki('#transfer-to'),
+            agent = transfer_to.value(),
+            self = this;
+        $.post('/transfer/' + this.active_room, {agent: agent}, function(data) {
+            if(data.type == 'success') {
+                $('#overlay, #transfer-win').hide();
+                transfer_to.value('');
+                self.close(self.active_room);
+            }
+        }, 'json');
+    },
+
+    receiveTransfer: function(data) {
         this.rooms[data.room] =
             new Room(data.room, data.topic, data.guest);
+        $(this.rooms[data.room].room_view[0]._dom)
+                               .find('.closeChat')
+                               .click(function() {
+                                   $.getJSON('/end/' + data.room);
+                                   self.close(data.room);
+                               });
+        this.expando();
+        if(!this.active_room) {
+            this.active_room = data.room;
+            this.messageControlsDisabled(false);
+        }
     },
 
     messageControlsDisabled: function(state) {
-        uki('#send').disabled(state);
-        uki('#body').disabled(state);
-        $(uki('#body')[0].dom()).find('input')
-                                .attr('disabled', state ? 'disabled' : '');
+        uki('#send, #body, #transfer-guest').disabled(state);
+        $(uki('#body')[0].dom()).css('cursor', state ? 'default' : 'text')
+                                .find('input')
+                                    .attr('disabled', state ? 'disabled' : '')
+                                    .css('cursor', state ? 'default' : 'text');
     }
 });
 
@@ -597,7 +713,7 @@ $.extend(AgentChat.prototype, {
 var GuestChat = function(guest) {
     $.ajaxSetup({cache: false});
     var self = this;
-    
+
     uki(
     { view: 'Box', rect: '1000 800', anchors: 'left top right bottom',
       background: '#EDF3FE', childViews: [
@@ -620,12 +736,12 @@ var GuestChat = function(guest) {
         }
       ]
     }).attachTo(window, '1000 800', {minSize: '300 0'});
-    
+
     var message_list_container = $(uki('#messages').dom())
                                .find('div').css('overflow-y', 'scroll');
     this.message_list = $('<ol class="message-list">')
                        .appendTo(message_list_container);
-    
+
     this.room = null;
     this.actions = {
         'message': this.message,
@@ -635,7 +751,7 @@ var GuestChat = function(guest) {
         'end': this.end,
         'qpos': this.queuePosition
     };
-    
+
     var sendAction = function(e) {
         if(!self.room)
             return self.messageControlsDisabled(true);
@@ -647,7 +763,7 @@ var GuestChat = function(guest) {
     uki('#body').bind('keyup', function(e) {
         (e.domEvent.which == 13 && sendAction.call(this));
     });
-    
+
     this.messageControlsDisabled(true);
     this.listen();
     this.addMessage('Please wait for the next available agent.');
@@ -665,7 +781,7 @@ $.extend(GuestChat.prototype, {
             setTimeout(function() { self.listen(); }, 0);
         });
     },
-    
+
     messageControlsDisabled: function(state) {
         uki('#send').disabled(state);
         uki('#body').disabled(state);
@@ -684,12 +800,12 @@ $.extend(GuestChat.prototype, {
 
         this.message_list.append(msg);
     },
-    
+
     send: function(message) {
         if(!this.room) return;
         $.post('/message', {id: this.room, body: message});
     },
-    
+
     message: function(data) {
         this.addMessage(data.user, data.body, data.user == USERNAME);
     },
@@ -697,23 +813,23 @@ $.extend(GuestChat.prototype, {
     notification: function(data) {
 
     },
-    
+
     join: function(data) {
         this.room = data.room;
         this.addMessage('You are now being assisted by ' + (data.agent || '?'));
         this.messageControlsDisabled(false);
     },
-    
+
     leave: function() {
 
     },
-    
+
     end: function() {
         this.room = null;
         this.addMessage('This chat has been terminated.');
         this.messageControlsDisabled(true);
     },
-    
+
     queuePosition: function(data) {
         this.addMessage('You are now number ' + data.position + ' in the queue; ' +
                         'Wait time is approximately ' + Math.floor(data.wait / 60) +
