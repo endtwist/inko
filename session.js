@@ -128,6 +128,7 @@ var Agent = SessionBase.extend({
         Object.merge(this, options);
         this.type = 'agent';
         this.guests = [];
+        this.status = 'available';
 
         Session.Djangofied.events.emit('signedOn', this);
     },

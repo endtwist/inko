@@ -193,14 +193,22 @@ exports.manager = new (new Class({
             user.respond({type: 'error', error: 'no such room'});
             return;
         }
-        
+
         if(!this.rooms[room]._private && !user.hasPerm('monitor_live_chat')) {
             user.respond(403, {type: 'error', error: 'no permissions'});
             return;
         }
-        
+
         if(~this.rooms[room].users.indexOf(user)) {
             this.rooms[room].end();
+
+            if(this.rooms[room]._private) {
+                var agent = this.rooms[room].users[0],
+                    guest = this.rooms[room].guest;
+                this.events.emit('message',
+                            new exports.Update([guest, agent], 'unassigned'));
+            }
+            
             delete this.rooms[room];
          } else {
             user.respond({type: 'error', error: 'no permissions'});
@@ -235,6 +243,12 @@ exports.manager = new (new Class({
             if($room._private &&
                $room.last_activity < (Date.now() - MAX_CHAT_INACTIVITY)) {
                $room.end();
+               
+               var agent = $room.users[0],
+                   guest = $room.guest;
+               this.events.emit('message',
+                           new exports.Update([guest, agent], 'unassigned'));
+               
                delete this.rooms[room];
             }
         }
@@ -289,7 +303,7 @@ exports.manager = new (new Class({
 
         this.rooms[room].transfer(old_agent, new_agent_sess);
     },
-    
+
     setLimit: function(session, limit) {
         if(typeof session == 'string') {
             session = this.available_agents.find(function(agent) {
@@ -298,8 +312,10 @@ exports.manager = new (new Class({
                       this.unavailable_agents.find(function(agent) {
                           return agent.get('username') == session;
                       });
-            if(!session)
+            if(!session) {
                 session.respond({type: 'error', error: 'no such agent'});
+                return;
+            }
         }
 
         if(limit <= AGENT_MAX_GUEST_LIMIT) {
@@ -307,6 +323,19 @@ exports.manager = new (new Class({
             session.respond({type: 'success', success: 'limit changed'});
         } else {
             session.respond({type: 'error', error: 'limit exceeds maximum'});
+        }
+    },
+
+    status: function(session, status) {
+        if(~['available', 'away'].indexOf(status)) {
+            session.status = status;
+            this.events.emit('message',
+                             new exports.Status(session,
+                                                'availability',
+                                                status));
+            session.respond({type: 'success', success: 'status updated'});
+        } else {
+            session.respond({type: 'error', error: 'invalid status'});
         }
     }
 }));

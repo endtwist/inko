@@ -183,6 +183,12 @@ post('/set_limit', function() {
         chat.manager.setLimit(this.session, this.param('limit'));
 });
 
+post('/status', function() {
+    if(!this.has('type', 'agent')) return;
+    
+    chat.manager.status(this.session, this.param('status'));
+});
+
 get('/join/:id', function(id) {
     if(!this.has('username')) return;
     // Join room :id
