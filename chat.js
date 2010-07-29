@@ -210,6 +210,8 @@ exports.manager = new (new Class({
             }
             
             delete this.rooms[room];
+            
+            user.respond({type: 'success', success: 'room terminated'});
          } else {
             user.respond({type: 'error', error: 'no permissions'});
          }
