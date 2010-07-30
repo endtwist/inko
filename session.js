@@ -138,8 +138,10 @@ var Agent = SessionBase.extend({
         this.guests.push(guest);
         guest.agent = this;
 
-        if(!this.available)
+        if(!this.available) {
             Session.Djangofied.events.emit('unavailable', this);
+            this.status = 'unavailable';
+        }
     },
 
     unassignGuest: function(guest) {
@@ -147,8 +149,10 @@ var Agent = SessionBase.extend({
         var pos = this.guests.indexOf(guest);
         this.guests.splice(pos, 1);
 
-        if(this.available)
+        if(this.available) {
             Session.Djangofied.events.emit('available', this);
+            this.status = 'available';
+        }
     },
 
     get available() {

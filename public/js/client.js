@@ -510,17 +510,10 @@ $.extend(AgentChat.prototype, {
     list: function() {
         var self = this;
         $.getJSON('/list', function(users) {
-            $.each(users.available_agents, function(i, agent) {
-                if(!(agent in self.agents)) {
-                    self.agents[agent] = new Agent(agent);
-                    self.agents[agent].availability('available');
-                }
-            });
-
-            $.each(users.unavailable_agents, function(i, agent) {
-                if(!(agent in self.agents)) {
-                    self.agents[agent] = new Agent(agent);
-                    self.agents[agent].availability('unavailable');
+            $.each(users.agents, function(i, agent) {
+                if(!(agent[0] in self.agents)) {
+                    self.agents[agent[0]] = new Agent(agent[0]);
+                    self.agents[agent[0]].availability(agent[1]);
                 }
             });
 

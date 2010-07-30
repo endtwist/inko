@@ -257,13 +257,21 @@ exports.manager = new (new Class({
     },
 
     userList: function() {
+        var agents = this.available_agents.map(function(agent) {
+                               return [
+                                   agent.get('username'),
+                                   agent.get('status')
+                               ];
+                           }),
+            unavail_agents = this.unavailable_agents.map(function(agent) {
+                                return [
+                                   agent.get('username'),
+                                   agent.get('status')
+                                ];
+                             });
+            Object.merge(agents, unavail_agents);
         return {
-            available_agents: this.available_agents.map(function(agent) {
-                                  return agent.get('username');
-                              }),
-            unavailable_agents: this.unavailable_agents.map(function(agent) {
-                                    return agent.get('username');
-                                }),
+            agents: Object.merge(agents),
             guests: this.guests.map(function(guest) {
                         return [guest.get('username'),
                                 guest.agent ? guest.agent.guest('username') :
