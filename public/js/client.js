@@ -302,7 +302,6 @@ var Room = function(name, topic, guest) {
 
     this.join = function(username) {
         this.users.push(username);
-        console.log(username + ' joined room ' + this.name);
         // notify...
     };
 
@@ -310,7 +309,6 @@ var Room = function(name, topic, guest) {
         if(pos = $.inArray(this.users, username)) {
             this.users.splice(pos, 1);
         }
-        console.log(username + ' left room ' + this.name);
         // notify...
     };
 
@@ -325,7 +323,7 @@ var Room = function(name, topic, guest) {
         else
             msg = $('<li class="' +
                     (you ? 'message-you' : 'message-them') +
-                    '">').html('<span>' + username + ':</span> ' + message);
+                    '">').html('<span>' + username + '</span> ' + message);
 
         this.message_list.append(msg);
     };
@@ -804,8 +802,6 @@ $.extend(GuestChat.prototype, {
     listen: function() {
         var self = this;
         $.getJSON('/listen', function(data) {
-            console.log(JSON.stringify(data));
-
             if(data.type in self.actions)
                 self.actions[data.type].call(self, data);
 
@@ -827,7 +823,7 @@ $.extend(GuestChat.prototype, {
         else
             msg = $('<li class="' +
                     (you ? 'message-you' : 'message-them') +
-                    '">').html('<span>' + username + ':</span> ' + message);
+                    '">').html('<span>' + username + '</span> ' + message);
 
         this.message_list.append(msg);
     },

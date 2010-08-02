@@ -1,5 +1,8 @@
 #!/usr/bin/env node
+var path = require('path');
 require.paths.unshift(require.paths[0] + '/express-0.14.1');
+require.paths.unshift(path.join(process.installPrefix, 'lib',
+                                'node', 'express-0.14.1'));
 require.paths.unshift('./libs');
 var sys = require('sys'),
     fs = require('fs'),
