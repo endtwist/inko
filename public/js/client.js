@@ -313,7 +313,7 @@ var Room = function(name, topic, guest) {
     };
 
     this.send = function(message) {
-        $.post('/message', {id: this.name, body: message});
+        $.post('message', {id: this.name, body: message});
     };
 
     this.addMessage = function(username, message, you) {
@@ -497,7 +497,7 @@ var AgentChat = function(agent) {
 $.extend(AgentChat.prototype, {
     listen: function() {
         var self = this;
-        $.getJSON('/listen', function(data) {
+        $.getJSON('listen', function(data) {
             if(data.type in self.actions)
                 self.actions[data.type].call(self, data);
 
@@ -507,7 +507,7 @@ $.extend(AgentChat.prototype, {
 
     list: function() {
         var self = this;
-        $.getJSON('/list', function(users) {
+        $.getJSON('list', function(users) {
             $.each(users.agents, function(i, agent) {
                 if(!(agent[0] in self.agents)) {
                     self.agents[agent[0]] = new Agent(agent[0]);
@@ -533,14 +533,14 @@ $.extend(AgentChat.prototype, {
         // and if there are any queued guests...
 
         var self = this;
-        $.getJSON('/assist', function(data) {
+        $.getJSON('assist', function(data) {
             if(data.type == 'joined') {
                 self.rooms[data.room] =
                     new Room(data.room, data.topic, data.guest);
                 $(self.rooms[data.room].room_view[0]._dom)
                                        .find('.closeChat')
                                        .click(function() {
-                                           $.getJSON('/end/' + data.room);
+                                           $.getJSON('end/' + data.room);
                                            self.close(data.room);
                                        });
                 self.messageControlsDisabled(false);
@@ -691,7 +691,7 @@ $.extend(AgentChat.prototype, {
         var transfer_to = uki('#transfer-to'),
             agent = transfer_to.value(),
             self = this;
-        $.post('/transfer/' + this.active_room, {agent: agent}, function(data) {
+        $.post('transfer/' + this.active_room, {agent: agent}, function(data) {
             if(data.type == 'success') {
                 $('#overlay, #transfer-win').hide();
                 transfer_to.value('');
@@ -706,7 +706,7 @@ $.extend(AgentChat.prototype, {
         $(this.rooms[data.room].room_view[0]._dom)
                                .find('.closeChat')
                                .click(function() {
-                                   $.getJSON('/end/' + data.room);
+                                   $.getJSON('end/' + data.room);
                                    self.close(data.room);
                                });
         this.expando();
@@ -717,7 +717,7 @@ $.extend(AgentChat.prototype, {
     },
 
     status: function(state) {
-        $.post('/status', {status: state});
+        $.post('status', {status: state});
     },
 
     statusUpdate: function(data) {
@@ -801,7 +801,7 @@ var GuestChat = function(guest) {
 $.extend(GuestChat.prototype, {
     listen: function() {
         var self = this;
-        $.getJSON('/listen', function(data) {
+        $.getJSON('listen', function(data) {
             if(data.type in self.actions)
                 self.actions[data.type].call(self, data);
 
@@ -830,7 +830,7 @@ $.extend(GuestChat.prototype, {
 
     send: function(message) {
         if(!this.room) return;
-        $.post('/message', {id: this.room, body: message});
+        $.post('message', {id: this.room, body: message});
     },
 
     message: function(data) {
