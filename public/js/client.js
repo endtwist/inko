@@ -858,7 +858,7 @@ $.extend(GuestChat.prototype, {
     },
 
     queuePosition: function(data) {
-        this.addMessage('You are now number ' + data.position + ' in the queue; ' +
+        this.addMessage('You are now number ' + (data.position + 1) + ' in the queue; ' +
                         'Wait time is approximately ' + Math.floor(data.wait / 60) +
                         ' minutes.');
     }
